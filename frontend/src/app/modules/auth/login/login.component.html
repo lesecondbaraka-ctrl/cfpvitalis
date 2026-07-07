@@ -1,0 +1,72 @@
+<section class="min-h-screen flex items-center justify-center bg-vc-bg">
+  <div class="w-full max-w-md px-4">
+    <!-- Logo / En-tête -->
+    <div class="text-center mb-8 animate-fade-in">
+      <div class="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 bg-vc-primary">
+        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      </div>
+      <h1 class="text-3xl font-bold text-vc-primary font-heading">
+        Vitalis Center
+      </h1>
+      <p class="mt-1 text-vc-text text-sm">
+        Plateforme E-Learning Institutionnelle
+      </p>
+    </div>
+
+    <!-- Notification visible -->
+    <!-- Inline notification removed: using global ToastService/ToastComponent instead -->
+
+    <!-- Carte de connexion -->
+    <div class="card animate-fade-in">
+      <h2 class="text-xl mb-6 text-vc-text text-center font-heading font-bold">
+        Connexion
+      </h2>
+
+      <form (ngSubmit)="onSubmit()" #loginForm="ngForm">
+        <div class="mb-4">
+          <label class="form-label" for="email">Adresse e-mail</label>
+          <input
+            id="email"
+            class="form-input"
+            type="email"
+            name="email"
+            [(ngModel)]="email"
+            required
+            placeholder="votre@email.com"
+          />
+        </div>
+
+        <div class="mb-6">
+          <label class="form-label" for="password">Mot de passe</label>
+          <input
+            id="password"
+            class="form-input"
+            type="password"
+            name="password"
+            [(ngModel)]="password"
+            required
+            placeholder="••••••••"
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="btn btn-primary w-full h-12 text-base font-semibold"
+          [disabled]="loading || loginForm.invalid">
+          <span *ngIf="loading">Connexion en cours...</span>
+          <span *ngIf="!loading">Se connecter</span>
+        </button>
+      </form>
+      <p class="text-center mt-4 text-sm">
+        Pas encore de compte ? <a routerLink="/register" class="text-vc-primary font-bold hover:underline">S'inscrire</a>
+      </p>
+    </div>
+
+    <p class="text-center mt-6 text-xs text-slate-500">
+      © {{ year }} Vitalis Center EUP — Tous droits réservés
+    </p>
+  </div>
+</section>

@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: vitalis
+      POSTGRES_PASSWORD: vitalis2025
+      POSTGRES_DB: vitalis_center
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: vitalis
+      MINIO_ROOT_PASSWORD: vitalis2025
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://vitalis:vitalis2025@postgres:5432/vitalis_center
+      DIRECT_URL: postgresql://vitalis:vitalis2025@postgres:5432/vitalis_center
+      JWT_SECRET: vitalis_center_jwt_secret_prod
+      CORS_ORIGIN: http://localhost:4200
+      STORAGE_MODE: local
+      PORT: 3000
+    depends_on:
+      - postgres
+    volumes:
+      - ./backend/uploads:/app/uploads
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  miniodata:

@@ -1,0 +1,151 @@
+/* ====================================
+ * Vitalis Center EUP — Styles Globaux
+ * Charte graphique conforme au cahier des charges
+ * ==================================== */
+
+@import 'tailwindcss';
+
+@theme {
+  --color-vc-primary: #823213;          /* Terre Cuite Institutionnelle */
+  --color-vc-primary-light: #a94a22;
+  --color-vc-primary-dark: #5e240d;
+  --color-vc-secondary: #84580D;        /* Or Sombre Académique */
+  --color-vc-secondary-light: #b07a1a;
+  --color-vc-secondary-dark: #5c3d07;
+  --color-vc-text: #2D3748;             /* Anthracite Profond */
+  --color-vc-background: #FDF8F5;       /* Blanc Crème Serein */
+
+  /* Feedback */
+  --color-vc-success: #2f855a;
+  --color-vc-warning: #c05621;
+  --color-vc-danger: #c53030;
+  --color-vc-info: #2b6cb0;
+
+  /* Typographie */
+  --font-heading: 'Arial', 'Helvetica', sans-serif;
+  --font-body: 'Arial', sans-serif;
+}
+
+/* ====================================
+ * Reset et Base
+ * ==================================== */
+html {
+  font-size: 14px; /* Taille minimale 14px à l'écran */
+  line-height: 1.25; /* Interlignage fixé à 1.25 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-vc-text);
+  background-color: var(--color-vc-background);
+  min-height: 100vh;
+}
+
+/* ====================================
+ * Typographie — Normes du cahier des charges
+ * Titres : Arial Bold / Helvetica
+ * Corps  : Arial Regular (min 14px, interlignage 1.25)
+ * ==================================== */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--color-vc-primary);
+  line-height: 1.2;
+}
+
+h1 { @apply text-4xl mb-4; }
+h2 { @apply text-2xl mb-3; }
+h3 { @apply text-xl mb-2; }
+
+p {
+  line-height: 1.25;
+  @apply mb-2;
+}
+
+a {
+  color: var(--color-vc-primary);
+  text-decoration: none;
+  @apply transition-colors duration-200;
+}
+
+a:hover {
+  color: var(--color-vc-primary-dark);
+}
+
+/* ====================================
+ * Boutons et Composants de la charte
+ * ==================================== */
+.btn {
+  @apply inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-lg font-heading font-bold text-sm cursor-pointer transition-all duration-200;
+}
+
+.btn-primary {
+  background-color: var(--color-vc-primary);
+  color: #fff;
+}
+.btn-primary:hover {
+  background-color: var(--color-vc-primary-dark);
+  @apply shadow-md;
+}
+
+.btn-secondary {
+  background-color: var(--color-vc-secondary);
+  color: #fff;
+}
+.btn-secondary:hover {
+  background-color: var(--color-vc-secondary-dark);
+  @apply shadow-md;
+}
+
+.btn-outline {
+  background-color: transparent;
+  border: 2px solid var(--color-vc-primary);
+  color: var(--color-vc-primary);
+}
+.btn-outline:hover {
+  background-color: var(--color-vc-primary);
+  color: #fff;
+}
+
+.card {
+  background: #fff;
+  @apply rounded-lg p-6 transition-shadow duration-200 shadow-sm border border-slate-100;
+}
+
+.card:hover {
+  @apply shadow-md;
+}
+
+.form-input {
+  @apply w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm transition-all duration-200;
+  color: var(--color-vc-text);
+  font-family: var(--font-body);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-vc-primary);
+  box-shadow: 0 0 0 3px rgba(130, 50, 19, 0.15);
+}
+
+.form-label {
+  @apply block mb-1.5 font-semibold text-sm;
+  color: var(--color-vc-text);
+}
+
+.badge {
+  @apply inline-block px-2.5 py-1 rounded-full text-xs font-bold uppercase;
+}
+
+.badge-admin-centre     { background: var(--color-vc-primary); color: #fff; }
+.badge-admin-etab       { background: var(--color-vc-secondary); color: #fff; }
+.badge-formateur        { background: var(--color-vc-info); color: #fff; }
+.badge-personnel-admin  { background: var(--color-vc-success); color: #fff; }
+.badge-apprenant        { @apply bg-purple-600 text-white; }
+
+/* Utilities helper to avoid inline styles */
+.bg-vc-bg {
+  background-color: var(--color-vc-background);
+}

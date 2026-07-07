@@ -1,0 +1,1 @@
+ALTER TABLE table_audit ADD COLUMN IF NOT EXISTS details TEXT;
