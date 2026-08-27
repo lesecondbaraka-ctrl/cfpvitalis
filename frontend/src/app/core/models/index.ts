@@ -121,3 +121,107 @@ export interface ProgressInfo {
   completedObligatoire: number;
   completionRate: number;
 }
+
+export interface LandingPageSettings {
+  id?: string;
+  heroTitre: string;
+  heroSousTitre: string;
+  heroNumeroAgrement: string;
+  topbarTexte?: string;
+  statsLaureats: number;
+  statsTauxReussite: number;
+  statsFilieres: number;
+  statsTitresVerif: number;
+  ctaTitre: string;
+  ctaSousTitre: string;
+  formationsSurMesureTitre?: string;
+  formationsSurMesureDescription?: string;
+  verifTitre?: string;
+  verifSousTitre?: string;
+  verifExempleNumero?: string;
+  contactAdresse: string;
+  contactEmail: string;
+  contactHoraires: string;
+  contactTelephone: string;
+  footerDescription?: string;
+  footerTutelleTexte?: string;
+  footerCopyright?: string;
+  footerBarreTexte?: string;
+  updatedAt?: string;
+}
+
+export interface LandingPageSection {
+  id?: string;
+  typeSection: 'avantage' | 'pedagogie' | 'admission' | 'secteur' | 'faq' | string;
+  titre: string;
+  sousTitre?: string;
+  description?: string;
+  ordre: number;
+  couleur?: string;
+  icone?: string;
+  actif?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface LandingPageTemoignage {
+  id?: string;
+  nom: string;
+  initiales: string;
+  role: string;
+  promotion?: string;
+  citation: string;
+  couleur?: string;
+  ordre: number;
+  actif?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface LandingPageActualite {
+  id?: string;
+  titre: string;
+  chapeau?: string;
+  contenu?: string;
+  categorie?: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  badgeCouleur?: string;
+  datePublication?: string | Date;
+  auteur?: string;
+  aLaUne?: boolean;
+  ordre: number;
+  actif?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PublicLandingData {
+  settings: LandingPageSettings;
+  sections: {
+    avantages: LandingPageSection[];
+    pedagogie: LandingPageSection[];
+    admission: LandingPageSection[];
+    secteurs: LandingPageSection[];
+    faq: LandingPageSection[];
+  };
+  temoignages?: LandingPageTemoignage[];
+  actualites?: LandingPageActualite[];
+  formations: Array<{
+    id: string;
+    titre: string;
+    description: string;
+    modulesCount: number;
+    createdAt?: string;
+  }>;
+}
+
+export interface ContactMessageItem {
+  id: string;
+  nom: string;
+  telephone: string;
+  filiere?: string | null;
+  message?: string | null;
+  createdAt: string;
+}
+

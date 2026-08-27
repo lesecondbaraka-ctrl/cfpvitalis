@@ -1,6 +1,6 @@
 import { Injectable, OnDestroy, NgZone } from '@angular/core';
 import { ReplaySubject, Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationsService implements OnDestroy {
@@ -13,7 +13,9 @@ export class NotificationsService implements OnDestroy {
 
   connect() {
     if (this.es) return;
-    const url = `${environment.apiUrl}/notifications/sse`;
+    const token = localStorage.getItem('vitalis_token');
+    if (!token) return;
+    const url = `${environment.apiUrl}/notifications/sse?token=${encodeURIComponent(token)}`;
     this.es = new EventSource(url);
     this.es.onopen = () => { this.reconnectAttempts = 0; if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; } };
     this.es.onmessage = (e) => {

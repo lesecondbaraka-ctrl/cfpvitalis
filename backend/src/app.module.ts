@@ -12,12 +12,19 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { QuizModule } from './modules/quiz/quiz.module';
 import { DevoirsModule } from './modules/devoirs/devoirs.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { LandingModule } from './modules/landing/landing.module';
+import { ApprenantModule } from './modules/apprenant/apprenant.module';
+import { AdmissionModule } from './modules/admission/admission.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { EtablissementGuard } from './common/guards/etablissement.guard';
+import { RolesGuard } from './common/guards/roles.guard';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env', 'backend/.env'],
+    }),
     CommonModule,
     PrismaModule,
     UtilisateursModule,
@@ -29,6 +36,9 @@ import { EtablissementGuard } from './common/guards/etablissement.guard';
     QuizModule,
     DevoirsModule,
     NotificationsModule,
+    LandingModule,
+    ApprenantModule,
+    AdmissionModule,
   ],
   providers: [
     EtablissementGuard,
@@ -39,6 +49,10 @@ import { EtablissementGuard } from './common/guards/etablissement.guard';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
 })

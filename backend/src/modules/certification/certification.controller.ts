@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Param, Req, UseGuards, ParseUUIDPipe } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { EtablissementGuard } from '../../common/guards/etablissement.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -15,8 +15,8 @@ export class CertificationController {
   @UseGuards(JwtAuthGuard, EtablissementGuard, RolesGuard)
   @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR)
   emettreCertificat(
-    @Param('formationId') formationId: string,
-    @Param('utilisateurId') utilisateurId: string,
+    @Param('formationId', ParseUUIDPipe) formationId: string,
+    @Param('utilisateurId', ParseUUIDPipe) utilisateurId: string,
     @Req() req: any,
   ) {
     const baseUrl = req.headers.origin || 'http://localhost:4200';

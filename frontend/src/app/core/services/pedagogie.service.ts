@@ -72,4 +72,28 @@ export class PedagogieService {
   submitNote(evaluationId: string, utilisateurId: string, valeur: number): Observable<unknown> {
     return this.http.post(`${this.url}/evaluations/${evaluationId}/notes`, { utilisateurId, valeur });
   }
+
+  updateModule(id: string, data: { titre?: string; coefficient?: number }): Observable<Module> {
+    return this.http.put<Module>(`${this.url}/modules/${id}`, data);
+  }
+
+  deleteModule(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.url}/modules/${id}`);
+  }
+
+  updateCours(id: string, data: { titre?: string; contenu?: string }): Observable<Cours> {
+    return this.http.put<Cours>(`${this.url}/cours/${id}`, data);
+  }
+
+  deleteCours(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.url}/cours/${id}`);
+  }
+
+  updateEvaluation(id: string, data: { titre?: string; noteMaximale?: number }): Observable<Evaluation> {
+    return this.http.put<Evaluation>(`${this.url}/evaluations/${id}`, data);
+  }
+
+  deleteEvaluation(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.url}/evaluations/${id}`);
+  }
 }

@@ -18,10 +18,40 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<Utilisateur | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
 
+  // Signals to guards/components that auth init (loadMe call) is done
+  private isReadySubject = new BehaviorSubject<boolean>(false);
+  public isReady$ = this.isReadySubject.asObservable();
+
   constructor(private http: HttpClient, private router: Router) {
     const token = localStorage.getItem('vitalis_token');
+    const savedUser = localStorage.getItem('vitalis_user');
+
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        this.currentUserSubject.next(user);
+      } catch (e) {
+        console.warn('[AuthService] Erreur lecture cache utilisateur:', e);
+      }
+    }
+
     if (token) {
-      this.loadMe().subscribe();
+      // Mark ready immediately so routes & guards can activate with cached user
+      this.isReadySubject.next(true);
+
+      // Refresh / validate profile in background
+      this.loadMe().subscribe({
+        next: (user) => {
+          if (user) {
+            console.log('[AuthService] Profil actualisé avec succès:', user.email);
+          }
+        },
+        error: (err) => {
+          console.warn('[AuthService] Erreur actualisation profil:', err?.status);
+        },
+      });
+    } else {
+      this.isReadySubject.next(true);
     }
   }
 
@@ -37,15 +67,44 @@ export class AuthService {
     return localStorage.getItem('vitalis_token');
   }
 
+  get refreshTokenValue(): string | null {
+    return localStorage.getItem('vitalis_refresh');
+  }
+
+  get isAdminCentre(): boolean {
+    return this.currentUser?.role === 'ADMIN_CENTRE';
+  }
+
+  get isAdminEtab(): boolean {
+    return this.currentUser?.role === 'ADMIN_ETABLISSEMENT';
+  }
+
+  get isFormateur(): boolean {
+    return this.currentUser?.role === 'FORMATEUR';
+  }
+
+  get isPersonnelAdmin(): boolean {
+    return this.currentUser?.role === 'PERSONNEL_ADMIN';
+  }
+
+  get isApprenant(): boolean {
+    return this.currentUser?.role === 'APPRENANT';
+  }
+
   loadMe(): Observable<Utilisateur | null> {
     return this.http.get<Utilisateur>(`${this.apiUrl}/me`).pipe(
       tap((user) => {
-        localStorage.setItem('vitalis_user', JSON.stringify(user));
-        this.currentUserSubject.next(user);
+        if (user) {
+          localStorage.setItem('vitalis_user', JSON.stringify(user));
+          this.currentUserSubject.next(user);
+        }
       }),
-      catchError(() => {
-        this.clearSession();
-        return of(null);
+      catchError((err) => {
+        console.warn('[AuthService] loadMe() non-bloquant:', err?.status);
+        if (err?.status === 401 && !localStorage.getItem('vitalis_refresh')) {
+          this.clearSession();
+        }
+        return of(this.currentUserSubject.value);
       }),
     );
   }
@@ -61,18 +120,45 @@ export class AuthService {
     password: string;
     nom: string;
     prenom: string;
-    role: string;
     etablissementId: string;
   }): Observable<unknown> {
     return this.http.post(`${this.apiUrl}/register`, data);
   }
 
-  refreshToken(): Observable<{ accessToken: string; refreshToken: string }> {
+  enrolerApprenant(data: {
+    email: string;
+    password: string;
+    nom: string;
+    prenom: string;
+    etablissementId: string;
+  }): Observable<unknown> {
+    return this.http.post(`${this.apiUrl}/enroler`, data);
+  }
+
+  doRefreshToken(): Observable<{ accessToken: string; refreshToken: string }> {
     const refresh = localStorage.getItem('vitalis_refresh');
-    return this.http.post<{ accessToken: string; refreshToken: string }>(`${this.apiUrl}/refresh`, { refreshToken: refresh }).pipe(
+    return this.http.post<{ accessToken: string; refreshToken: string }>(
+      `${this.apiUrl}/refresh`,
+      { refreshToken: refresh }
+    ).pipe(
       tap((res) => {
         localStorage.setItem('vitalis_token', res.accessToken);
         localStorage.setItem('vitalis_refresh', res.refreshToken);
+      }),
+    );
+  }
+
+  changePassword(data: { ancienMotDePasse: string; nouveauMotDePasse: string }): Observable<any> {
+    return this.http.put(`${this.apiUrl}/change-password`, data);
+  }
+
+  updateProfile(data: { nom: string; prenom: string }): Observable<any> {
+    return this.http.put<{ success: boolean; utilisateur: Utilisateur }>(`${this.apiUrl}/me`, data).pipe(
+      tap((res) => {
+        if (res.utilisateur) {
+          localStorage.setItem('vitalis_user', JSON.stringify(res.utilisateur));
+          this.currentUserSubject.next(res.utilisateur);
+        }
       }),
     );
   }
@@ -82,6 +168,7 @@ export class AuthService {
     localStorage.setItem('vitalis_refresh', res.refreshToken);
     localStorage.setItem('vitalis_user', JSON.stringify(res.utilisateur));
     this.currentUserSubject.next(res.utilisateur);
+    this.isReadySubject.next(true);
   }
 
   logout(): void {

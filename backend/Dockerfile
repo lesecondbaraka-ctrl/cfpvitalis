@@ -12,6 +12,7 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY prisma ./prisma
 COPY prisma.config.ts ./
+RUN npx prisma generate
 RUN mkdir -p uploads
 EXPOSE 3000
 CMD ["node", "dist/main"]

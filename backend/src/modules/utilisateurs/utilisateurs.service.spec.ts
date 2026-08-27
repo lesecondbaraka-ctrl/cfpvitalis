@@ -4,6 +4,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { ForbiddenException } from '@nestjs/common';
 import { Role } from '../../common/enums/role.enum';
+import { NotificationsService } from '../notifications/notifications.service';
+import { IdentityService } from '../admission/identity.service';
 
 describe('UtilisateursService (Business Rules)', () => {
   let service: UtilisateursService;
@@ -26,12 +28,19 @@ describe('UtilisateursService (Business Rules)', () => {
     sign: jest.fn().mockReturnValue('mock-token'),
   };
 
+  const mockNotifications = {
+    emit: jest.fn(),
+    stream: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UtilisateursService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: JwtService, useValue: mockJwt },
+        { provide: NotificationsService, useValue: mockNotifications },
+        { provide: IdentityService, useValue: { ensureProfileFromUser: jest.fn().mockResolvedValue({}) } },
       ],
     }).compile();
 
@@ -52,13 +61,40 @@ describe('UtilisateursService (Business Rules)', () => {
         password: 'password123',
         nom: 'Doe',
         prenom: 'John',
-        role: Role.APPRENANT,
         etablissementId: 'uuid-etab-99',
       };
 
       await expect(service.register(dto)).rejects.toThrow(
         ForbiddenException,
       );
+    });
+
+    it('should create user with APPRENANT role on public registration', async () => {
+      mockPrisma.etablissement.findUnique.mockResolvedValue({ id: 'uuid-etab-1' });
+      mockPrisma.utilisateur.findUnique.mockResolvedValue(null);
+      mockPrisma.utilisateur.create.mockImplementation(async ({ data }) => ({
+        ...data,
+        id: 'uuid-user-1',
+        createdAt: new Date(),
+        actif: true,
+      }));
+      mockPrisma.auditLog.create.mockResolvedValue(null);
+
+      const dto = {
+        email: 'test@vitalis.com',
+        password: 'password123',
+        nom: 'Doe',
+        prenom: 'John',
+        etablissementId: 'uuid-etab-1',
+      };
+
+      const result = await service.register(dto);
+
+      expect(mockPrisma.utilisateur.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ role: Role.APPRENANT }),
+      }));
+      expect(result.utilisateur.role).toBe(Role.APPRENANT);
+      expect(result.success).toBe(true);
     });
   });
 });

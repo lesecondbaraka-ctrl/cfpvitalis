@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Put, Delete, Param, Body, Req, UseGuards, UseInterceptors, UploadedFile,
+  Controller, Get, Post, Put, Delete, Param, Body, Req, UseGuards, UseInterceptors, UploadedFile, ParseUUIDPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -8,7 +8,22 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { PedagogieService } from './pedagogie.service';
+import { uploadFileFilter, MAX_UPLOAD_FILE_SIZE } from '../../common/utils/file-upload.util';
 import { StorageService } from '../../common/services/storage.service';
+import {
+  CreateFormationDto,
+  UpdateFormationDto,
+  CreateModuleDto,
+  CreateCoursDto,
+  CreateEvaluationDto,
+  SubmitNoteDto,
+} from './dto/pedagogie.dto';
+import {
+  UpdateModuleDto,
+  UpdateCoursDto,
+  UpdateEvaluationDto,
+} from './dto/pedagogie-update.dto';
+
 
 @Controller('pedagogie')
 @UseGuards(JwtAuthGuard, EtablissementGuard, RolesGuard)
@@ -26,51 +41,51 @@ export class PedagogieController {
 
   @Get('formations/:id')
   @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR, Role.APPRENANT, Role.PERSONNEL_ADMINISTRATIF)
-  getFormation(@Param('id') id: string, @Req() req: any) {
+  getFormation(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.service.getFormation(id, req.user);
   }
 
   @Post('formations')
   @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR)
-  createFormation(@Body() data: { titre: string; description: string }, @Req() req: any) {
-    return this.service.createFormation(data, req.user);
+  createFormation(@Body() dto: CreateFormationDto, @Req() req: any) {
+    return this.service.createFormation(dto, req.user);
   }
 
   @Put('formations/:id')
   @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR)
-  updateFormation(@Param('id') id: string, @Body() data: any, @Req() req: any) {
-    return this.service.updateFormation(id, data, req.user);
+  updateFormation(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateFormationDto, @Req() req: any) {
+    return this.service.updateFormation(id, dto, req.user);
   }
 
   @Delete('formations/:id')
   @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR)
-  deleteFormation(@Param('id') id: string, @Req() req: any) {
+  deleteFormation(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.service.deleteFormation(id, req.user);
   }
 
   @Post('formations/:formationId/modules')
   @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR)
   createModule(
-    @Param('formationId') formationId: string,
-    @Body() data: { titre: string; coefficient?: number; ordre?: number },
+    @Param('formationId', ParseUUIDPipe) formationId: string,
+    @Body() dto: CreateModuleDto,
     @Req() req: any,
   ) {
-    return this.service.createModule(formationId, data, req.user);
+    return this.service.createModule(formationId, dto, req.user);
   }
 
   @Post('modules/:moduleId/cours')
   @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR)
   createCours(
-    @Param('moduleId') moduleId: string,
-    @Body() data: { titre: string; contenu?: string; fileUrl?: string },
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+    @Body() dto: CreateCoursDto,
     @Req() req: any,
   ) {
-    return this.service.createCours(moduleId, data, req.user);
+    return this.service.createCours(moduleId, dto, req.user);
   }
 
   @Get('cours/:id')
   @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR, Role.APPRENANT)
-  getCours(@Param('id') id: string, @Req() req: any) {
+  getCours(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     if (req.user.role === Role.APPRENANT) {
       return this.service.getCoursWithProgress(id, req.user.id);
     }
@@ -79,15 +94,20 @@ export class PedagogieController {
 
   @Post('cours/:coursId/complete')
   @Roles(Role.APPRENANT)
-  markComplete(@Param('coursId') coursId: string, @Req() req: any) {
+  markComplete(@Param('coursId', ParseUUIDPipe) coursId: string, @Req() req: any) {
     return this.service.markComplete(coursId, req.user.id);
   }
 
   @Post('cours/:coursId/upload')
   @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      fileFilter: uploadFileFilter,
+      limits: { fileSize: MAX_UPLOAD_FILE_SIZE },
+    }),
+  )
   async uploadCours(
-    @Param('coursId') coursId: string,
+    @Param('coursId', ParseUUIDPipe) coursId: string,
     @UploadedFile() file: Express.Multer.File,
     @Req() req: any,
   ) {
@@ -97,8 +117,8 @@ export class PedagogieController {
 
   @Get('formations/:formationId/progress')
   @Roles(Role.APPRENANT, Role.FORMATEUR, Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT)
-  getProgress(@Param('formationId') formationId: string, @Req() req: any) {
-    const userId = req.query.apprenantId || req.user.id;
+  getProgress(@Param('formationId', ParseUUIDPipe) formationId: string, @Req() req: any) {
+    const userId = req.user.role === Role.APPRENANT ? req.user.id : String(req.query.apprenantId ?? req.user.id);
     return this.service.getProgressByFormation(formationId, userId);
   }
 
@@ -111,27 +131,72 @@ export class PedagogieController {
   @Post('modules/:moduleId/evaluations')
   @Roles(Role.FORMATEUR, Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT)
   createEvaluation(
-    @Param('moduleId') moduleId: string,
-    @Body() data: { titre: string; noteMaximale?: number },
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+    @Body() dto: CreateEvaluationDto,
     @Req() req: any,
   ) {
-    return this.service.createEvaluation(moduleId, data, req.user);
+    return this.service.createEvaluation(moduleId, dto, req.user);
   }
 
   @Get('modules/:moduleId/evaluations')
   @Roles(Role.FORMATEUR, Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT)
-  getEvaluations(@Param('moduleId') moduleId: string, @Req() req: any) {
+  getEvaluations(@Param('moduleId', ParseUUIDPipe) moduleId: string, @Req() req: any) {
     return this.service.getEvaluationsByModule(moduleId, req.user);
   }
 
   @Post('evaluations/:evaluationId/notes')
   @Roles(Role.FORMATEUR, Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT)
   submitNote(
-    @Param('evaluationId') evaluationId: string,
-    @Body() data: { utilisateurId: string; valeur: number },
+    @Param('evaluationId', ParseUUIDPipe) evaluationId: string,
+    @Body() dto: SubmitNoteDto,
     @Req() req: any,
   ) {
     const ip = req.ip || req.headers['x-forwarded-for'] || '0.0.0.0';
-    return this.service.submitNote(evaluationId, data.utilisateurId, data.valeur, req.user.id, ip);
+    return this.service.submitNote(evaluationId, dto.utilisateurId, dto.valeur, req.user, ip);
+  }
+
+  // ====================================
+  // UPDATE & DELETE MODULES
+  // ====================================
+  @Put('modules/:id')
+  @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR)
+  updateModule(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateModuleDto, @Req() req: any) {
+    return this.service.updateModule(id, dto, req.user);
+  }
+
+  @Delete('modules/:id')
+  @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR)
+  deleteModule(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.service.deleteModule(id, req.user);
+  }
+
+  // ====================================
+  // UPDATE & DELETE COURS
+  // ====================================
+  @Put('cours/:id')
+  @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR)
+  updateCours(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCoursDto, @Req() req: any) {
+    return this.service.updateCours(id, dto, req.user);
+  }
+
+  @Delete('cours/:id')
+  @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR)
+  deleteCours(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.service.deleteCours(id, req.user);
+  }
+
+  // ====================================
+  // UPDATE & DELETE EVALUATIONS
+  // ====================================
+  @Put('evaluations/:id')
+  @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR)
+  updateEvaluation(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateEvaluationDto, @Req() req: any) {
+    return this.service.updateEvaluation(id, dto, req.user);
+  }
+
+  @Delete('evaluations/:id')
+  @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR)
+  deleteEvaluation(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.service.deleteEvaluation(id, req.user);
   }
 }

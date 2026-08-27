@@ -60,3 +60,7 @@ docker-compose up -d
 - Tableaux de bord analytics / KPI
 - Journal d'audit
 - Upload documents (stockage local ou S3)
+
+## Sécurité
+
+- Lire le guide de sécurité du projet : [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md)

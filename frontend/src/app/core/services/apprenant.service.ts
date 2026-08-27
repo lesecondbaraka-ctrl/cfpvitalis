@@ -1,0 +1,342 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
+import { tap, shareReplay } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
+
+export interface ApprenantDashboard {
+  completionGlobale: number;
+  formationsActives: Array<{
+    id: string;
+    titre: string;
+    description: string;
+    nbModules: number;
+    totalCours: number;
+    coursCompletes: number;
+    pourcentage: number;
+    certifie: boolean;
+    certificatId: string | null;
+  }>;
+  nbFormations: number;
+  nbQuizPasses: number;
+  nbDevoirsDeposes: number;
+  nbCertificats: number;
+  prochaineEcheance: {
+    type: 'devoir' | 'seance';
+    id: string;
+    titre: string;
+    formationTitre: string;
+    dateLimite: string;
+  } | null;
+}
+
+export interface ApprenantFormation {
+  id: string;
+  titre: string;
+  description: string;
+  createdAt: string;
+  nbModules: number;
+  totalCours: number;
+  coursCompletes: number;
+  pourcentage: number;
+  estCertifie: boolean;
+  certificat: {
+    id: string;
+    numeroSerie: string;
+    dateEmission: string;
+  } | null;
+}
+
+export interface FormationArborescence {
+  formation: {
+    id: string;
+    titre: string;
+    description: string;
+    etablissement: { id: string; nom: string; codeAntenne: string };
+    progressionGlobale: number;
+    certificat: { id: string; numeroSerie: string; dateEmission: string } | null;
+  };
+  modules: Array<{
+    id: string;
+    titre: string;
+    ordre: number;
+    coefficient: number;
+    statut: 'non_commence' | 'en_cours' | 'termine';
+    pourcentage: number;
+    totalCours: number;
+    completedCours: number;
+    cours: Array<{
+      id: string;
+      titre: string;
+      hasMedia: boolean;
+      hasText: boolean;
+      complete: boolean;
+      dateTerminaison: string | null;
+    }>;
+    quiz: Array<{
+      id: string;
+      titre: string;
+      dureeMinutes: number | null;
+      passe: boolean;
+      score: number | null;
+      datePassage: string | null;
+    }>;
+    devoirs: Array<{
+      id: string;
+      titre: string;
+      consignes: string | null;
+      dateLimite: string | null;
+      estEnRetard: boolean;
+      soumis: boolean;
+      note: number | null;
+      commentaire: string | null;
+      dateDepot: string | null;
+    }>;
+  }>;
+}
+
+export interface EligibiliteCertificat {
+  eligible: boolean;
+  completionRate: number;
+  moyenne: number;
+  raison: string | null;
+  dejaEmis: boolean;
+  certificat: {
+    id: string;
+    numeroSerie: string;
+    dateEmission: string;
+    urlPdfS3: string;
+  } | null;
+}
+
+export interface CoursContenu {
+  id: string;
+  titre: string;
+  contenu: string | null;
+  fileUrl: string | null;
+  module: { id: string; titre: string };
+  formation: { id: string; titre: string };
+  complete: boolean;
+  dateTerminaison: string | null;
+}
+
+export interface QuizQuestion {
+  id: string;
+  enonce: string;
+  ordre: number;
+  options: Array<{ text: string }>;
+}
+
+export interface QuizDetail {
+  id: string;
+  titre: string;
+  dureeMinutes: number | null;
+  moduleId: string;
+  formationTitre: string;
+  totalQuestions: number;
+  questions: QuizQuestion[];
+  tentative: {
+    id: string;
+    score: number;
+    datePassage: string;
+    dejaPasse: boolean;
+  } | null;
+}
+
+export interface QuizSubmissionResult {
+  success: boolean;
+  tentativeId: string;
+  score: number;
+  bonnesReponses: number;
+  totalQuestions: number;
+  datePassage: string;
+  detailsCorrection: Array<{
+    questionId: string;
+    enonce: string;
+    selectedIndex: number;
+    estCorrect: boolean;
+  }>;
+}
+
+export interface ApprenantCertificat {
+  id: string;
+  numeroSerie: string;
+  hashVerification: string;
+  moyenneGenerale: number;
+  dateEmission: string;
+  urlPdfS3: string;
+  formation: {
+    id: string;
+    titre: string;
+    description: string;
+    etablissement: { nom: string; codeAntenne: string };
+  };
+}
+
+@Injectable({
+  providedIn: 'root',
+})
+export class ApprenantService {
+  private apiUrl = `${environment.apiUrl}/apprenant`;
+
+  private readonly CACHE_KEYS = {
+    DASHBOARD: 'vc_apprenant_dashboard',
+    FORMATIONS: 'vc_apprenant_formations',
+    MODULES_PREFIX: 'vc_apprenant_modules_',
+    CERTIFICATS: 'vc_apprenant_certificats',
+    DEVOIRS: 'vc_apprenant_devoirs',
+  };
+
+  constructor(private http: HttpClient) {}
+
+  /**
+   * Helper pour lire en toute sécurité depuis le localStorage
+   */
+  private getLocal<T>(key: string): T | null {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? (JSON.parse(raw) as T) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Helper pour écrire dans le localStorage
+   */
+  private setLocal<T>(key: string, value: T): void {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {}
+  }
+
+  /**
+   * Retourne immédiatement l'instantané du Dashboard en cache (0ms - aucun chargement)
+   */
+  getDashboardSnapshot(): ApprenantDashboard | null {
+    return this.getLocal<ApprenantDashboard>(this.CACHE_KEYS.DASHBOARD);
+  }
+
+  /**
+   * Retourne immédiatement l'instantané des Formations en cache (0ms)
+   */
+  getFormationsSnapshot(): ApprenantFormation[] | null {
+    return this.getLocal<ApprenantFormation[]>(this.CACHE_KEYS.FORMATIONS);
+  }
+
+  /**
+   * Retourne immédiatement l'instantané des Modules d'une formation en cache (0ms)
+   */
+  getFormationModulesSnapshot(formationId: string): FormationArborescence | null {
+    return this.getLocal<FormationArborescence>(this.CACHE_KEYS.MODULES_PREFIX + formationId);
+  }
+
+  /**
+   * Retourne immédiatement l'instantané des Devoirs en cache (0ms)
+   */
+  getDevoirsSnapshot(): any[] | null {
+    return this.getLocal<any[]>(this.CACHE_KEYS.DEVOIRS);
+  }
+
+  /**
+   * Retourne immédiatement l'instantané des Certificats en cache (0ms)
+   */
+  getCertificatsSnapshot(): ApprenantCertificat[] | null {
+    return this.getLocal<ApprenantCertificat[]>(this.CACHE_KEYS.CERTIFICATS);
+  }
+
+  /**
+   * Invalide le cache local pour forcer un rafraîchissement immédiat
+   */
+  invalidateCache() {
+    try {
+      localStorage.removeItem(this.CACHE_KEYS.DASHBOARD);
+      localStorage.removeItem(this.CACHE_KEYS.FORMATIONS);
+      localStorage.removeItem(this.CACHE_KEYS.CERTIFICATS);
+      localStorage.removeItem(this.CACHE_KEYS.DEVOIRS);
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(this.CACHE_KEYS.MODULES_PREFIX)) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    } catch {}
+  }
+
+  getDashboard(): Observable<ApprenantDashboard> {
+    return this.http.get<ApprenantDashboard>(`${this.apiUrl}/dashboard`).pipe(
+      tap((data) => this.setLocal(this.CACHE_KEYS.DASHBOARD, data)),
+      shareReplay(1),
+    );
+  }
+
+  getFormations(): Observable<ApprenantFormation[]> {
+    return this.http.get<ApprenantFormation[]>(`${this.apiUrl}/formations`).pipe(
+      tap((data) => this.setLocal(this.CACHE_KEYS.FORMATIONS, data)),
+      shareReplay(1),
+    );
+  }
+
+  getFormationModules(formationId: string): Observable<FormationArborescence> {
+    return this.http.get<FormationArborescence>(`${this.apiUrl}/formations/${formationId}/modules`).pipe(
+      tap((data) => this.setLocal(this.CACHE_KEYS.MODULES_PREFIX + formationId, data)),
+      shareReplay(1),
+    );
+  }
+
+  getEligibiliteCertificat(formationId: string): Observable<EligibiliteCertificat> {
+    return this.http.get<EligibiliteCertificat>(`${this.apiUrl}/formations/${formationId}/eligibilite-certificat`).pipe(
+      shareReplay(1),
+    );
+  }
+
+  getCoursContenu(coursId: string): Observable<CoursContenu> {
+    return this.http.get<CoursContenu>(`${this.apiUrl}/cours/${coursId}/contenu`);
+  }
+
+  markCoursProgression(coursId: string): Observable<any> {
+    this.invalidateCache();
+    return this.http.post<any>(`${this.apiUrl}/cours/${coursId}/progression`, {});
+  }
+
+  getQuiz(quizId: string): Observable<QuizDetail> {
+    return this.http.get<QuizDetail>(`${this.apiUrl}/quiz/${quizId}`);
+  }
+
+  submitQuiz(quizId: string, reponses: { questionId: string; selectedIndex: number }[]): Observable<QuizSubmissionResult> {
+    this.invalidateCache();
+    return this.http.post<QuizSubmissionResult>(`${this.apiUrl}/quiz/${quizId}/soumettre`, { reponses });
+  }
+
+  deposerDevoir(devoirId: string, file: File): Observable<any> {
+    this.invalidateCache();
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<any>(`${this.apiUrl}/devoirs/${devoirId}/deposer`, formData);
+  }
+
+  /**
+   * Récupère tous les devoirs en UNE SEULE requête (endpoint agrégé backend)
+   */
+  getAllDevoirs(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/devoirs`).pipe(
+      tap((data) => this.setLocal(this.CACHE_KEYS.DEVOIRS, data)),
+      shareReplay(1),
+    );
+  }
+
+  getCertificats(): Observable<ApprenantCertificat[]> {
+    return this.http.get<ApprenantCertificat[]>(`${this.apiUrl}/certificats`).pipe(
+      tap((data) => this.setLocal(this.CACHE_KEYS.CERTIFICATS, data)),
+      shareReplay(1),
+    );
+  }
+
+  telechargerCertificat(certificatId: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/certificats/${certificatId}/telecharger`, {
+      responseType: 'blob',
+    });
+  }
+}

@@ -114,4 +114,34 @@ export class QuizService {
       orderBy: { datePassage: 'desc' },
     });
   }
+
+  async update(id: string, data: { titre?: string; dureeMinutes?: number }, user: any) {
+    const quiz = await this.prisma.quiz.findUnique({
+      where: { id },
+      include: { module: { include: { formation: true } } },
+    });
+    if (!quiz) throw new NotFoundException('Quiz introuvable.');
+    if (user.role !== Role.ADMIN_CENTRE && quiz.module.formation.etablissementId !== user.etablissementId) {
+      throw new ForbiddenException('BR-02 : Accès interdit.');
+    }
+    return this.prisma.quiz.update({
+      where: { id },
+      data: {
+        titre: data.titre,
+        dureeMinutes: data.dureeMinutes,
+      },
+    });
+  }
+
+  async delete(id: string, user: any) {
+    const quiz = await this.prisma.quiz.findUnique({
+      where: { id },
+      include: { module: { include: { formation: true } } },
+    });
+    if (!quiz) throw new NotFoundException('Quiz introuvable.');
+    if (user.role !== Role.ADMIN_CENTRE && quiz.module.formation.etablissementId !== user.etablissementId) {
+      throw new ForbiddenException('BR-02 : Accès interdit.');
+    }
+    return this.prisma.quiz.delete({ where: { id } });
+  }
 }

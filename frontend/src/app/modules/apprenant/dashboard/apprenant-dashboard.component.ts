@@ -1,0 +1,320 @@
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
+import { ApprenantService, ApprenantDashboard } from '../../../core/services/apprenant.service';
+import { AuthService } from '../../../core/services/auth.service';
+
+@Component({
+  selector: 'app-apprenant-dashboard',
+  standalone: true,
+  imports: [CommonModule, RouterLink],
+  template: `
+    <div class="space-y-8 animate-fade-in pb-12">
+      <!-- HERO BANNER INSTITUTIONNEL (Charte Graphique Officielle) -->
+      <div class="bg-[#124F80] text-white p-6 md:p-8 relative overflow-hidden shadow-md border-b-4 border-[#F0791E] rounded-xs">
+        <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div class="space-y-2">
+            <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-xs bg-white/10 border border-white/20 text-[#F0791E] text-xs font-bold uppercase tracking-wider">
+              <svg class="w-4 h-4 text-[#F0791E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+              </svg>
+              <span>Portail d'Apprentissage Certifié · EUP</span>
+            </div>
+            <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-white font-heading">
+              Bonjour, {{ user?.prenom }} {{ user?.nom }}
+            </h1>
+            <div class="barre"></div>
+            <p class="text-xs md:text-sm text-[#E7F1FA] max-w-2xl leading-relaxed mt-2 font-normal">
+              Bienvenue sur votre espace officiel de formation Vitalis Center. Suivez vos modules, passez vos quiz d'évaluation et préparez l'obtention de votre certification officielle.
+            </p>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-3 shrink-0">
+            <a
+              routerLink="/apprenant/formations"
+              class="px-5 py-2.5 bg-[#F0791E] hover:bg-[#d96612] text-white text-xs font-bold transition-all text-center flex items-center justify-center gap-2 shadow-xs rounded-xs cursor-pointer"
+            >
+              <span>Continuer mes cours</span>
+              <span>→</span>
+            </a>
+            <a
+              routerLink="/apprenant/certificats"
+              class="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/30 text-xs font-semibold transition-all text-center flex items-center justify-center gap-2 rounded-xs cursor-pointer"
+            >
+              <span>Mes Certificats</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI METRICS (5 CARDS) AVEC ICÔNES VECTORIELLES PROFESSIONNELLES -->
+      @if (dashboard) {
+        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <!-- KPI 1: Formations actives -->
+          <div class="p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col justify-between">
+            <div class="w-9 h-9 rounded-xs bg-[#E7F1FA] text-[#1C75BC] flex items-center justify-center mb-3 border border-[#1C75BC]/20">
+              <svg class="w-5 h-5 text-[#1C75BC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-2xl font-bold text-[#1B1D1F] font-mono">{{ dashboard.nbFormations }}</p>
+              <p class="text-xs font-semibold text-[#4B5157] mt-0.5">Formations actives</p>
+            </div>
+          </div>
+
+          <!-- KPI 2: Complétion moyenne -->
+          <div class="p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col justify-between">
+            <div class="w-9 h-9 rounded-xs bg-[#E7F1EA] text-[#276B44] flex items-center justify-center mb-3 border border-[#276B44]/20">
+              <svg class="w-5 h-5 text-[#276B44]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-2xl font-bold text-[#276B44] font-mono">{{ dashboard.completionGlobale }}%</p>
+              <p class="text-xs font-semibold text-[#4B5157] mt-0.5">Complétion moyenne</p>
+            </div>
+          </div>
+
+          <!-- KPI 3: Devoirs déposés -->
+          <div class="p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col justify-between">
+            <div class="w-9 h-9 rounded-xs bg-[#FDECDD] text-[#F0791E] flex items-center justify-center mb-3 border border-[#F0791E]/20">
+              <svg class="w-5 h-5 text-[#F0791E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-2xl font-bold text-[#1B1D1F] font-mono">{{ dashboard.nbDevoirsDeposes }}</p>
+              <p class="text-xs font-semibold text-[#4B5157] mt-0.5">Devoirs déposés</p>
+            </div>
+          </div>
+
+          <!-- KPI 4: Quiz passés -->
+          <div class="p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col justify-between">
+            <div class="w-9 h-9 rounded-xs bg-[#E7F1FA] text-[#1C75BC] flex items-center justify-center mb-3 border border-[#1C75BC]/20">
+              <svg class="w-5 h-5 text-[#1C75BC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-2xl font-bold text-[#1B1D1F] font-mono">{{ dashboard.nbQuizPasses }}</p>
+              <p class="text-xs font-semibold text-[#4B5157] mt-0.5">Quiz passés</p>
+            </div>
+          </div>
+
+          <!-- KPI 5: Certificats obtenus -->
+          <div class="p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs col-span-2 sm:col-span-1 flex flex-col justify-between">
+            <div class="w-9 h-9 rounded-xs bg-[#FDECDD] text-[#F0791E] flex items-center justify-center mb-3 border border-[#F0791E]/20">
+              <svg class="w-5 h-5 text-[#F0791E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-2xl font-bold text-[#F0791E] font-mono">{{ dashboard.nbCertificats }}</p>
+              <p class="text-xs font-semibold text-[#4B5157] mt-0.5">Certificats obtenus</p>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- MAIN CONTENT: FORMATIONS & ECHEANCES -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- LEFT: FORMATIONS AFFECTÉES (2 cols) -->
+        <div class="lg:col-span-2 space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-bold text-[#1B1D1F] font-heading">
+                Mes Formations Affectées
+              </h2>
+              <div class="barre"></div>
+            </div>
+            <a routerLink="/apprenant/formations" class="text-xs font-semibold text-[#1C75BC] hover:underline flex items-center gap-1">
+              <span>Voir tout</span>
+              <span>→</span>
+            </a>
+          </div>
+
+          @if (loading) {
+            <div class="p-12 text-center text-[#4B5157] bg-white border border-[#D7DBDE] rounded-xs">
+              <div class="inline-block w-8 h-8 border-3 border-[#1C75BC] border-t-transparent rounded-full animate-spin mb-3"></div>
+              <p class="text-xs font-semibold text-[#4B5157]">Chargement de vos formations affectées...</p>
+            </div>
+          } @else if (!dashboard || dashboard.formationsActives.length === 0) {
+            <div class="p-10 text-center bg-white border border-[#D7DBDE] text-[#4B5157] rounded-xs space-y-3">
+              <svg class="w-12 h-12 text-[#9AA1A8] mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+              <h3 class="text-sm font-bold text-[#1B1D1F]">Aucune formation active</h3>
+              <p class="text-xs text-[#4B5157] max-w-md mx-auto">
+                Vos formations actives apparaîtront ici après confirmation de votre inscription.
+              </p>
+            </div>
+          } @else {
+            <div class="space-y-4">
+              @for (form of dashboard.formationsActives; track form.id) {
+                <div class="p-5 bg-white border border-[#D7DBDE] hover:border-[#1C75BC] transition-all rounded-xs shadow-2xs">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="space-y-1.5 flex-1">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <h3 class="text-sm font-bold text-[#1B1D1F]">{{ form.titre }}</h3>
+                        @if (form.certifie) {
+                          <span class="px-2.5 py-0.5 rounded-xs bg-[#E7F1EA] text-[#276B44] border border-[#276B44] text-[10px] font-bold">
+                            ✓ Certifié
+                          </span>
+                        }
+                      </div>
+                      <p class="text-xs text-[#4B5157] line-clamp-1">{{ form.description || 'Formation professionnelle certifiante' }}</p>
+                      <div class="flex items-center gap-4 text-[11px] text-[#4B5157] pt-1">
+                        <span class="flex items-center gap-1.5">
+                          <svg class="w-3.5 h-3.5 text-[#1C75BC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                          </svg>
+                          <strong>{{ form.nbModules }}</strong> modules
+                        </span>
+                        <span class="flex items-center gap-1.5">
+                          <svg class="w-3.5 h-3.5 text-[#276B44]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <strong>{{ form.coursCompletes }}</strong> / {{ form.totalCours }} cours validés
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="flex sm:flex-col items-center sm:items-end justify-between gap-2 sm:min-w-[140px] shrink-0">
+                      <span class="text-xs font-bold font-mono" [class]="form.pourcentage === 100 ? 'text-[#276B44]' : 'text-[#1C75BC]'">
+                        {{ form.pourcentage }}% complété
+                      </span>
+                      <a
+                        [routerLink]="['/apprenant/formations', form.id]"
+                        class="px-3.5 py-1.5 bg-[#1C75BC] hover:bg-[#124F80] text-white text-xs font-bold transition-all rounded-xs shadow-xs"
+                      >
+                        Consulter le cours →
+                      </a>
+                    </div>
+                  </div>
+
+                  <!-- Progress Bar -->
+                  <div class="w-full bg-[#E7F1FA] h-1.5 mt-4 overflow-hidden">
+                    <div
+                      class="h-1.5 transition-all duration-500"
+                      [class]="form.pourcentage === 100 ? 'bg-[#276B44]' : 'bg-[#1C75BC]'"
+                      [style.width.%]="form.pourcentage"
+                    ></div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- RIGHT: PROCHAINE ÉCHÉANCE & RÈGLE BR-03 -->
+        <div class="space-y-6">
+          <!-- PROCHAINE ÉCHÉANCE -->
+          <div class="p-6 bg-white border border-[#D7DBDE] rounded-xs space-y-4 shadow-xs">
+            <div>
+              <h2 class="text-sm font-bold text-[#1B1D1F] font-heading">
+                Prochaine Échéance
+              </h2>
+              <div class="barre"></div>
+            </div>
+
+            @if (dashboard?.prochaineEcheance; as ech) {
+              <div class="p-4 bg-[#E7F1FA] border-l-4 border-[#1C75BC] space-y-2 rounded-xs">
+                <div class="flex items-center justify-between">
+                  <span class="px-2 py-0.5 rounded-xs text-[10px] font-bold uppercase" [class]="ech.type === 'devoir' ? 'bg-[#FDECDD] text-[#F0791E] border border-[#F0791E]' : 'bg-[#E7F1FA] text-[#1C75BC] border border-[#1C75BC]'">
+                    {{ ech.type === 'devoir' ? 'Devoir à rendre' : 'Séance programmée' }}
+                  </span>
+                  <span class="text-[11px] font-semibold text-[#4B5157] font-mono">
+                    {{ ech.dateLimite | date:'dd MMM yyyy à HH:mm' }}
+                  </span>
+                </div>
+                <h3 class="text-xs font-bold text-[#1B1D1F]">{{ ech.titre }}</h3>
+                <p class="text-[11px] text-[#4B5157]">{{ ech.formationTitre }}</p>
+                <div class="pt-2">
+                  <a
+                    routerLink="/apprenant/evaluations/depot-devoir"
+                    class="inline-block text-xs font-bold text-[#1C75BC] hover:underline"
+                  >
+                    Accéder à l'épreuve →
+                  </a>
+                </div>
+              </div>
+            } @else {
+              <div class="p-6 text-center text-[#4B5157] bg-[#F5F6F7] rounded-xs space-y-1">
+                <svg class="w-8 h-8 text-[#276B44] mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p class="text-xs font-semibold text-[#1B1D1F]">Aucune échéance urgente</p>
+                <p class="text-[11px] text-[#4B5157]">Vous êtes à jour dans vos cours et devoirs.</p>
+              </div>
+            }
+          </div>
+
+          <!-- RÈGLE BR-03 RAPPEL DE CERTIFICATION -->
+          <div class="p-6 bg-white border-l-4 border-[#276B44] border border-[#D7DBDE] rounded-xs space-y-3 shadow-xs">
+            <div class="flex items-center gap-2">
+              <svg class="w-5 h-5 text-[#276B44]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+              </svg>
+              <h3 class="text-xs font-bold text-[#276B44] uppercase tracking-wider">Règle de Certification (BR-03)</h3>
+            </div>
+            <p class="text-xs text-[#1B1D1F] leading-relaxed">
+              Pour débloquer votre <strong>Certificat officiel</strong> infalsifiable :
+            </p>
+            <ul class="text-xs text-[#4B5157] space-y-1.5 list-disc list-inside">
+              <li>Compléter <strong>100%</strong> des cours obligatoires.</li>
+              <li>Obtenir une moyenne pondérée $\ge$ <strong>10/20</strong> aux évaluations et quiz.</li>
+            </ul>
+            <div class="pt-2">
+              <a
+                routerLink="/apprenant/certificats"
+                class="text-xs font-bold text-[#1C75BC] hover:underline flex items-center gap-1"
+              >
+                <span>Vérifier mon statut d'éligibilité</span>
+                <span>→</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `,
+})
+export class ApprenantDashboardComponent implements OnInit {
+  dashboard: ApprenantDashboard | null = null;
+  user: any = null;
+  loading = true;
+
+  constructor(
+    private apprenantService: ApprenantService,
+    private auth: AuthService,
+  ) {}
+
+  ngOnInit() {
+    this.user = this.auth.currentUser;
+    // 1. Rendu instantané depuis le snapshot cache local (0ms !)
+    const cached = this.apprenantService.getDashboardSnapshot();
+    if (cached) {
+      this.dashboard = cached;
+      this.loading = false;
+    }
+    // 2. Revalidation silencieuse en tâche de fond
+    this.loadDashboard(cached === null);
+  }
+
+  loadDashboard(showSpinner = true) {
+    if (showSpinner) {
+      this.loading = true;
+    }
+    this.apprenantService.getDashboard().subscribe({
+      next: (data) => {
+        this.dashboard = data;
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+      },
+    });
+  }
+}

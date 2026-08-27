@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Put, Param, Body, Req, UseGuards, UseInterceptors, UploadedFile,
+  Controller, Get, Post, Put, Delete, Param, Body, Req, UseGuards, UseInterceptors, UploadedFile, ParseUUIDPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -8,6 +8,8 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { DevoirsService } from './devoirs.service';
+import { CreateDevoirDto, NoterDevoirDto, UpdateDevoirDto } from './dto/devoirs.dto';
+import { uploadFileFilter, MAX_UPLOAD_FILE_SIZE } from '../../common/utils/file-upload.util';
 
 @Controller('devoirs')
 @UseGuards(JwtAuthGuard, EtablissementGuard, RolesGuard)
@@ -16,13 +18,13 @@ export class DevoirsController {
 
   @Post('module/:moduleId')
   @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR)
-  create(@Param('moduleId') moduleId: string, @Body() body: any, @Req() req: any) {
-    return this.service.create(moduleId, body, req.user);
+  create(@Param('moduleId', ParseUUIDPipe) moduleId: string, @Body() dto: CreateDevoirDto, @Req() req: any) {
+    return this.service.create(moduleId, dto, req.user);
   }
 
   @Get('module/:moduleId')
   @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR, Role.APPRENANT)
-  findByModule(@Param('moduleId') moduleId: string, @Req() req: any) {
+  findByModule(@Param('moduleId', ParseUUIDPipe) moduleId: string, @Req() req: any) {
     return this.service.findByModule(moduleId, req.user);
   }
 
@@ -34,25 +36,42 @@ export class DevoirsController {
 
   @Get(':id')
   @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR, Role.APPRENANT)
-  findOne(@Param('id') id: string, @Req() req: any) {
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.service.findOne(id, req.user);
   }
 
   @Post(':id/submit')
   @Roles(Role.APPRENANT)
-  @UseInterceptors(FileInterceptor('file'))
-  submit(@Param('id') id: string, @UploadedFile() file: Express.Multer.File, @Req() req: any) {
+  @UseInterceptors(
+    FileInterceptor('file', {
+      fileFilter: uploadFileFilter,
+      limits: { fileSize: MAX_UPLOAD_FILE_SIZE },
+    }),
+  )
+  submit(@Param('id', ParseUUIDPipe) id: string, @UploadedFile() file: Express.Multer.File, @Req() req: any) {
     return this.service.submit(id, file, req.user);
   }
 
   @Put(':id/noter/:apprenantId')
   @Roles(Role.FORMATEUR, Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT)
   noter(
-    @Param('id') id: string,
-    @Param('apprenantId') apprenantId: string,
-    @Body() body: { note: number; commentaire?: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('apprenantId', ParseUUIDPipe) apprenantId: string,
+    @Body() dto: NoterDevoirDto,
     @Req() req: any,
   ) {
-    return this.service.noter(id, apprenantId, body.note, body.commentaire ?? '', req.user);
+    return this.service.noter(id, apprenantId, dto.note, dto.commentaire ?? '', req.user);
+  }
+
+  @Put(':id')
+  @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR)
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateDevoirDto, @Req() req: any) {
+    return this.service.update(id, dto, req.user);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN_CENTRE, Role.ADMIN_ETABLISSEMENT, Role.FORMATEUR)
+  delete(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.service.delete(id, req.user);
   }
 }

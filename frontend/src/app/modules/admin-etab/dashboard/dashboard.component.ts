@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { AnalyticsService } from '../../../core/services/analytics.service';
 import { UtilisateursService } from '../../../core/services/utilisateurs.service';
@@ -8,11 +9,19 @@ import { KpiEtablissement, Utilisateur } from '../../../core/models';
 @Component({
   selector: 'app-admin-etab-dashboard',
   standalone: true,
-  imports: [MainLayoutComponent],
+  imports: [MainLayoutComponent, RouterLink],
   template: `
     <app-main-layout>
       <div class="p-8 max-w-6xl mx-auto">
-        <h1 class="text-3xl font-bold text-vc-primary font-heading mb-8">Mon établissement</h1>
+        <div class="flex items-center justify-between mb-8">
+          <div>
+            <h1 class="text-3xl font-bold text-vc-primary font-heading">Mon établissement</h1>
+            <p class="text-xs text-slate-500 mt-1">Supervision des activités, utilisateurs et sessions d'admission</p>
+          </div>
+          <a routerLink="/admin-etab/sessions-admission" class="btn btn-primary text-xs font-semibold py-2 px-4">
+            🎯 Gérer les Admissions & Candidatures
+          </a>
+        </div>
         @if (kpi) {
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <div class="card text-center"><p class="text-3xl font-bold text-vc-primary">{{ kpi.apprenants }}</p><p class="text-xs text-slate-500">Apprenants</p></div>

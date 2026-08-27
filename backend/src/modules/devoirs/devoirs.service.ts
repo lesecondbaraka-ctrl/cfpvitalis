@@ -54,6 +54,14 @@ export class DevoirsService {
     if (user.role !== Role.ADMIN_CENTRE && devoir.module.formation.etablissementId !== user.etablissementId) {
       throw new ForbiddenException('BR-02 : Accès interdit.');
     }
+
+    if (user.role === Role.APPRENANT) {
+      return {
+        ...devoir,
+        soumissions: devoir.soumissions.filter((s) => s.apprenantId === user.id),
+      };
+    }
+
     return devoir;
   }
 
@@ -85,5 +93,36 @@ export class DevoirsService {
       include: { devoir: { include: { module: { include: { formation: { select: { titre: true } } } } } } },
       orderBy: { dateDepot: 'desc' },
     });
+  }
+
+  async update(id: string, data: { titre?: string; consignes?: string; dateLimite?: string }, user: any) {
+    const devoir = await this.prisma.devoir.findUnique({
+      where: { id },
+      include: { module: { include: { formation: true } } },
+    });
+    if (!devoir) throw new NotFoundException('Devoir introuvable.');
+    if (user.role !== Role.ADMIN_CENTRE && devoir.module.formation.etablissementId !== user.etablissementId) {
+      throw new ForbiddenException('BR-02 : Accès interdit.');
+    }
+    return this.prisma.devoir.update({
+      where: { id },
+      data: {
+        titre: data.titre,
+        consignes: data.consignes,
+        dateLimite: data.dateLimite ? new Date(data.dateLimite) : undefined,
+      },
+    });
+  }
+
+  async delete(id: string, user: any) {
+    const devoir = await this.prisma.devoir.findUnique({
+      where: { id },
+      include: { module: { include: { formation: true } } },
+    });
+    if (!devoir) throw new NotFoundException('Devoir introuvable.');
+    if (user.role !== Role.ADMIN_CENTRE && devoir.module.formation.etablissementId !== user.etablissementId) {
+      throw new ForbiddenException('BR-02 : Accès interdit.');
+    }
+    return this.prisma.devoir.delete({ where: { id } });
   }
 }

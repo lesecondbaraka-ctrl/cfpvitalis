@@ -51,4 +51,12 @@ export class QuizService {
   mesTentatives(): Observable<TentativeQuiz[]> {
     return this.http.get<TentativeQuiz[]>(`${this.url}/mes/tentatives`);
   }
+
+  update(id: string, data: { titre: string; dureeMinutes?: number }): Observable<Quiz> {
+    return this.http.put<Quiz>(`${this.url}/${id}`, data);
+  }
+
+  delete(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.url}/${id}`);
+  }
 }

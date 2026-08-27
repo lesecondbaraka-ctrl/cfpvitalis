@@ -18,7 +18,12 @@ export class AnalyticsService {
     return this.http.get<KpiEtablissement>(`${this.url}/etablissement/${id}`);
   }
 
+  getEtablissementDashboardDetails(id: string): Observable<any> {
+    return this.http.get<any>(`${this.url}/etablissement/${id}/dashboard-details`);
+  }
+
   getFormation(id: string): Observable<unknown> {
     return this.http.get(`${this.url}/formation/${id}`);
   }
+
 }

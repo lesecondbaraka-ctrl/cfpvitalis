@@ -6,7 +6,7 @@ import { ToastComponent } from './core/components/toast.component';
 @Component({
   selector: 'app-root',
   imports: [RouterOutlet, ToastComponent],
-  template: `<router-outlet></router-outlet><app-toast />`,
+  template: `<router-outlet></router-outlet><app-toast></app-toast>`,
 })
 export class App implements OnInit {
   constructor(private notifications: NotificationsService) {}

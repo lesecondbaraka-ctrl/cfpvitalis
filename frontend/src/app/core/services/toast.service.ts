@@ -19,6 +19,18 @@ export class ToastService {
     }
   }
 
+  success(message: string, duration = 5000) {
+    this.show(message, 'success', duration);
+  }
+
+  error(message: string, duration = 6000) {
+    this.show(message, 'error', duration);
+  }
+
+  info(message: string, duration = 5000) {
+    this.show(message, 'info', duration);
+  }
+
   dismiss(id: string) {
     this.subject.next(this.subject.value.filter(t => t.id !== id));
   }

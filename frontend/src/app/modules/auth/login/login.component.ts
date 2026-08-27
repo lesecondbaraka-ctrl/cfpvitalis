@@ -5,12 +5,13 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationsService } from '../../../core/services/notifications.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { getHomeRouteForRole } from '../../../core/guards/auth.guard';
 import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule],
   templateUrl: './login.component.html',
 })
 export class LoginComponent implements OnInit, OnDestroy {
@@ -72,7 +73,7 @@ export class LoginComponent implements OnInit, OnDestroy {
       return 'Email ou mot de passe incorrect. Vérifiez vos identifiants.';
     }
     if (err.status === 403) {
-      return 'Accès refusé. Votre compte n’est pas autorisé à se connecter ici.';
+      return 'Accès refusé. Votre compte n\u2019est pas autorisé à se connecter ici.';
     }
     if (err.status === 0) {
       return 'Impossible de joindre le serveur. Vérifiez votre connexion.';
@@ -85,10 +86,11 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.notificationMessage = '';
     this.notificationType = '';
     this.authService.login(this.email, this.password).subscribe({
-      next: () => {
-        this.showNotification('success', 'Connexion réussie ! Redirection vers le tableau de bord...');
+      next: (res) => {
+        const homeRoute = getHomeRouteForRole(res.utilisateur?.role);
+        this.showNotification('success', 'Connexion réussie ! Redirection en cours...');
         this.loading = false;
-        setTimeout(() => this.router.navigate(['/dashboard']), 700);
+        setTimeout(() => this.router.navigate([homeRoute]), 700);
       },
       error: (err) => {
         this.showNotification('error', this.getErrorMessage(err));

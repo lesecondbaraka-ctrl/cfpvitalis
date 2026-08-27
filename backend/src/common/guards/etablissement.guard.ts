@@ -15,9 +15,18 @@ export class EtablissementGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    if (!user || !user.etablissementId) {
+    if (!user) {
+      throw new ForbiddenException('Utilisateur non authentifié.');
+    }
+
+    // BR-01 Exception : ADMIN_CENTRE supervise le réseau et APPRENANT candidate au niveau du réseau
+    if (user.role === 'ADMIN_CENTRE' || user.role === 'APPRENANT') {
+      return true;
+    }
+
+    if (!user.etablissementId) {
       throw new ForbiddenException(
-        'BR-01 : Tout utilisateur doit être rattaché à un établissement physique actif.',
+        'BR-01 : Tout personnel ou administrateur doit être rattaché à un établissement physique actif.',
       );
     }
 

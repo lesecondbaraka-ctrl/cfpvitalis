@@ -37,12 +37,13 @@ export class PedagogieService {
     return formation;
   }
 
-  async createFormation(data: { titre: string; description: string }, user: any) {
+  async createFormation(data: { titre: string; description?: string; formationReferentielId?: string }, user: any) {
     return this.prisma.formation.create({
       data: {
         titre: data.titre,
         description: data.description,
         etablissementId: user.etablissementId,
+        formationReferentielId: data.formationReferentielId,
       },
     });
   }
@@ -118,7 +119,15 @@ export class PedagogieService {
   async getProgressByFormation(formationId: string, userId: string) {
     const formation = await this.prisma.formation.findUnique({
       where: { id: formationId },
-      include: { modules: { include: { cours: true } } },
+      include: {
+        modules: {
+          select: {
+            id: true,
+            coefficient: true,
+            cours: { select: { id: true } },
+          },
+        },
+      },
     });
     if (!formation) throw new NotFoundException('Formation introuvable.');
 
@@ -204,7 +213,31 @@ export class PedagogieService {
     return this.prisma.formation.delete({ where: { id } });
   }
 
-  async submitNote(evaluationId: string, userId: string, valeur: number, auteurId: string, ipAdresse: string) {
+  async submitNote(evaluationId: string, userId: string, valeur: number, user: any, ipAdresse: string) {
+    const evaluation = await this.prisma.evaluation.findUnique({
+      where: { id: evaluationId },
+      include: { module: { include: { formation: true } } },
+    });
+    if (!evaluation) throw new NotFoundException('Évaluation introuvable.');
+
+    if (user.role !== Role.ADMIN_CENTRE && evaluation.module.formation.etablissementId !== user.etablissementId) {
+      throw new ForbiddenException('BR-02 : Vous ne pouvez pas noter une évaluation d\'un autre établissement.');
+    }
+
+    const noteMax = Number(evaluation.noteMaximale || 20);
+    if (valeur < 0 || valeur > noteMax) {
+      throw new ForbiddenException(`La note doit être comprise entre 0 et ${noteMax}.`);
+    }
+
+    const targetStudent = await this.prisma.utilisateur.findUnique({
+      where: { id: userId },
+    });
+    if (!targetStudent) throw new NotFoundException('Apprenant introuvable.');
+
+    if (user.role !== Role.ADMIN_CENTRE && targetStudent.etablissementId !== user.etablissementId) {
+      throw new ForbiddenException('BR-02 : L\'apprenant n\'appartient pas à votre établissement.');
+    }
+
     // Récupérer l'ancienne note si elle existe pour l'état avant
     const oldNote = await this.prisma.note.findUnique({
       where: { evaluationId_utilisateurId: { evaluationId, utilisateurId: userId } },
@@ -215,13 +248,13 @@ export class PedagogieService {
     const result = await this.prisma.note.upsert({
       where: { evaluationId_utilisateurId: { evaluationId, utilisateurId: userId } },
       update: { valeur },
-      create: { utilisateurId: userId, evaluationId, valeur, formateurId: auteurId },
+      create: { utilisateurId: userId, evaluationId, valeur, formateurId: user.id },
     });
 
     // Journaliser dans AuditLog (Exigence de traçabilité immuable avec états avant/après)
     await this.prisma.auditLog.create({
       data: {
-        auteurId,
+        auteurId: user.id,
         action: 'SAISIE_NOTE',
         details: {
           userId,
@@ -268,5 +301,113 @@ export class PedagogieService {
     }
 
     return totalPoids > 0 ? Math.round((totalPondere / totalPoids) * 100) / 100 : 0;
+  }
+
+  // ====================================
+  // UPDATE & DELETE MODULES
+  // ====================================
+  async updateModule(id: string, data: { titre?: string; coefficient?: number; ordre?: number }, user: any) {
+    const mod = await this.prisma.module.findUnique({
+      where: { id },
+      include: { formation: true },
+    });
+    if (!mod) throw new NotFoundException('Module introuvable.');
+    if (user.role !== Role.ADMIN_CENTRE && mod.formation.etablissementId !== user.etablissementId) {
+      throw new ForbiddenException('BR-02 : Accès interdit.');
+    }
+    return this.prisma.module.update({
+      where: { id },
+      data: {
+        titre: data.titre,
+        coefficient: data.coefficient !== undefined ? data.coefficient : undefined,
+        ordre: data.ordre !== undefined ? data.ordre : undefined,
+      },
+    });
+  }
+
+  async deleteModule(id: string, user: any) {
+    const mod = await this.prisma.module.findUnique({
+      where: { id },
+      include: { formation: true },
+    });
+    if (!mod) throw new NotFoundException('Module introuvable.');
+    if (user.role !== Role.ADMIN_CENTRE && mod.formation.etablissementId !== user.etablissementId) {
+      throw new ForbiddenException('BR-02 : Accès interdit.');
+    }
+    return this.prisma.module.delete({ where: { id } });
+  }
+
+  // ====================================
+  // UPDATE & DELETE COURS
+  // ====================================
+  async updateCours(id: string, data: { titre?: string; contenu?: string; fileUrl?: string }, user: any) {
+    const cours = await this.prisma.cours.findUnique({
+      where: { id },
+      include: { module: { include: { formation: true } } },
+    });
+    if (!cours) throw new NotFoundException('Cours introuvable.');
+    if (user.role !== Role.ADMIN_CENTRE && cours.module.formation.etablissementId !== user.etablissementId) {
+      throw new ForbiddenException('BR-02 : Accès interdit.');
+    }
+    return this.prisma.cours.update({
+      where: { id },
+      data: {
+        titre: data.titre,
+        contenu: data.contenu,
+        fileUrl: data.fileUrl,
+      },
+    });
+  }
+
+  async deleteCours(id: string, user: any) {
+    const cours = await this.prisma.cours.findUnique({
+      where: { id },
+      include: { module: { include: { formation: true } } },
+    });
+    if (!cours) throw new NotFoundException('Cours introuvable.');
+    if (user.role !== Role.ADMIN_CENTRE && cours.module.formation.etablissementId !== user.etablissementId) {
+      throw new ForbiddenException('BR-02 : Accès interdit.');
+    }
+    // Nettoyer les séances associées
+    await this.prisma.seanceFormation.updateMany({
+      where: { coursId: id },
+      data: { coursId: null },
+    });
+    return this.prisma.cours.delete({ where: { id } });
+  }
+
+  // ====================================
+  // UPDATE & DELETE EVALUATIONS
+  // ====================================
+  async updateEvaluation(id: string, data: { titre?: string; noteMaximale?: number }, user: any) {
+    const evaluation = await this.prisma.evaluation.findUnique({
+      where: { id },
+      include: { module: { include: { formation: true } } },
+    });
+    if (!evaluation) throw new NotFoundException('Évaluation introuvable.');
+    if (user.role !== Role.ADMIN_CENTRE && evaluation.module.formation.etablissementId !== user.etablissementId) {
+      throw new ForbiddenException('BR-02 : Accès interdit.');
+    }
+    return this.prisma.evaluation.update({
+      where: { id },
+      data: {
+        titre: data.titre,
+        noteMaximale: data.noteMaximale !== undefined ? data.noteMaximale : undefined,
+      },
+    });
+  }
+
+  async deleteEvaluation(id: string, user: any) {
+    const evaluation = await this.prisma.evaluation.findUnique({
+      where: { id },
+      include: { module: { include: { formation: true } } },
+    });
+    if (!evaluation) throw new NotFoundException('Évaluation introuvable.');
+    if (user.role !== Role.ADMIN_CENTRE && evaluation.module.formation.etablissementId !== user.etablissementId) {
+      throw new ForbiddenException('BR-02 : Accès interdit.');
+    }
+    // Supprimer les notes
+    await this.prisma.note.deleteMany({ where: { evaluationId: id } });
+    return this.prisma.evaluation.delete({ where: { id } });
   }
 }

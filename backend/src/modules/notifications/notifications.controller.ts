@@ -1,5 +1,5 @@
-import { Controller, Sse } from '@nestjs/common';
-import { Public } from '../../common/decorators/public.decorator';
+import { Controller, Sse, Req, UseGuards, UnauthorizedException } from '@nestjs/common';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { NotificationsService } from './notifications.service';
@@ -8,9 +8,17 @@ import { NotificationsService } from './notifications.service';
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
 
-  @Public()
+  /**
+   * SSE stream — authentifié par JWT.
+   * Le frontend doit passer le token via query param `token` car EventSource
+   * ne supporte pas les headers Authorization.
+   * Ex: new EventSource('/api/notifications/sse?token=<jwt>')
+   */
+  @UseGuards(JwtAuthGuard)
   @Sse('sse')
-  sse(): Observable<MessageEvent> {
-    return this.notifications.stream().pipe(map((payload) => ({ data: payload } as unknown as MessageEvent)));
+  sse(@Req() req: any): Observable<MessageEvent> {
+    return this.notifications.stream().pipe(
+      map((payload) => ({ data: payload } as unknown as MessageEvent)),
+    );
   }
 }

@@ -7,16 +7,17 @@ datasource db {
 }
 
 model Certificat {
-  id                String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  utilisateurId     String      @map("apprenant_id") @db.Uuid
-  formationId       String      @map("formation_id") @db.Uuid
-  numeroSerie       String      @unique @map("numero_serie") @db.VarChar(50)
-  hashVerification  String      @unique @map("hash_verification") @db.VarChar(64)
-  urlPdfS3          String      @map("url_pdf_s3") @db.VarChar(512)
-  moyenneGenerale   Decimal     @map("moyenne_generale") @db.Decimal(4, 2)
-  dateEmission      DateTime?   @default(now()) @map("date_emission") @db.Timestamptz(6)
-  utilisateur       Utilisateur @relation(fields: [utilisateurId], references: [id], onUpdate: NoAction)
-  formation         Formation   @relation(fields: [formationId], references: [id], onUpdate: NoAction)
+  id                String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  utilisateurId     String             @map("apprenant_id") @db.Uuid
+  formationId       String             @map("formation_id") @db.Uuid
+  numeroSerie       String             @unique @map("numero_serie") @db.VarChar(50)
+  hashVerification  String             @unique @map("hash_verification") @db.VarChar(64)
+  urlPdfS3          String             @map("url_pdf_s3") @db.VarChar(512)
+  moyenneGenerale   Decimal            @map("moyenne_generale") @db.Decimal(4, 2)
+  dateEmission      DateTime?          @default(now()) @map("date_emission") @db.Timestamptz(6)
+  utilisateur       Utilisateur        @relation(fields: [utilisateurId], references: [id], onUpdate: NoAction)
+  formation         Formation          @relation(fields: [formationId], references: [id], onUpdate: NoAction)
+  validationsNiveau ValidationNiveau[]
 
   @@index([utilisateurId], map: "idx_certificats_apprenant")
   @@index([formationId], map: "idx_certificats_formation")
@@ -25,30 +26,45 @@ model Certificat {
 }
 
 model Cours {
-  id              String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  moduleId        String         @map("module_id") @db.Uuid
-  titre           String         @db.VarChar(255)
-  contenu         String?        @map("contenu_text")
-  fileUrl         String?        @map("url_document_s3") @db.VarChar(512)
-  createdAt       DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
-  module          Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  userProgress    UserProgress[]
-  seances         SeanceFormation[]
+  id           String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  moduleId     String            @map("module_id") @db.Uuid
+  titre        String            @db.VarChar(255)
+  contenu      String?           @map("contenu_text")
+  fileUrl      String?           @map("url_document_s3") @db.VarChar(512)
+  createdAt    DateTime?         @default(now()) @map("created_at") @db.Timestamptz(6)
+  module       Module            @relation(fields: [moduleId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  userProgress UserProgress[]
+  seances      SeanceFormation[]
 
   @@index([moduleId], map: "idx_cours_module")
   @@map("cours")
 }
 
 model Etablissement {
-  id           String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  nom          String        @db.VarChar(255)
-  codeAntenne  String        @unique @map("code_antenne") @db.VarChar(50)
-  adresse      String?
-  createdAt    DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime?     @default(now()) @map("updated_at") @db.Timestamptz(6)
-  formations   Formation[]
-  utilisateurs Utilisateur[]
+  id                    String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nom                   String               @db.VarChar(255)
+  codeAntenne           String               @unique @map("code_antenne") @db.VarChar(50)
+  adresse               String?
+  typeEtablissement     type_etablissement   @default(SATELLITE_NATIONAL) @map("type_etablissement")
+  statut                statut_etablissement @default(ACTIF)
+  parentEtablissementId String?              @map("parent_etablissement_id") @db.Uuid
+  pays                  String?              @db.VarChar(3)
+  fuseauHoraire         String?              @default("Africa/Kinshasa") @map("fuseau_horaire") @db.VarChar(50)
+  langueDefaut          String?              @default("fr") @map("langue_defaut") @db.VarChar(5)
+  parametresAutonomie   Json?                @map("parametres_autonomie")
+  reglementLocal        Json?                @map("reglement_local")
+  createdAt             DateTime?            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime?            @default(now()) @map("updated_at") @db.Timestamptz(6)
 
+  parent            Etablissement?     @relation("Hierarchy", fields: [parentEtablissementId], references: [id], onUpdate: NoAction)
+  satellites        Etablissement[]    @relation("Hierarchy")
+  formations        Formation[]
+  utilisateurs      Utilisateur[]
+  sessionsAdmission SessionAdmission[]
+  parametresReseau  ParametresReseau?
+  apprenantsOrigine Apprenant[]
+
+  @@index([parentEtablissementId], map: "idx_etablissements_parent")
   @@map("etablissements")
 }
 
@@ -66,46 +82,51 @@ model Evaluation {
 }
 
 model Formation {
-  id              String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  etablissementId String        @map("etablissement_id") @db.Uuid
-  titre           String        @db.VarChar(255)
-  description     String?
-  createdAt       DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
-  certificats     Certificat[]
-  etablissement   Etablissement @relation(fields: [etablissementId], references: [id], onUpdate: NoAction)
-  modules         Module[]
+  id                     String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  etablissementId        String                @map("etablissement_id") @db.Uuid
+  formationReferentielId String?               @map("formation_referentiel_id") @db.Uuid
+  titre                  String                @db.VarChar(255)
+  description            String?
+  createdAt              DateTime?             @default(now()) @map("created_at") @db.Timestamptz(6)
+  certificats            Certificat[]
+  etablissement          Etablissement         @relation(fields: [etablissementId], references: [id], onUpdate: NoAction)
+  formationReferentiel   FormationReferentiel? @relation(fields: [formationReferentielId], references: [id], onUpdate: NoAction)
+  modules                Module[]
+  inscriptions           Inscription[]
+  sessionsAdmission      SessionAdmission[]
 
   @@index([etablissementId], map: "idx_formations_etablissement")
+  @@index([formationReferentielId], map: "idx_formations_referentiel")
   @@map("formations")
 }
 
 model Module {
-  id                String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  formationId       String            @map("formation_id") @db.Uuid
-  titre             String            @db.VarChar(255)
-  ordre             Int
-  coefficient       Decimal?          @default(1.00) @db.Decimal(4, 2)
-  createdAt         DateTime?         @default(now()) @map("created_at") @db.Timestamptz(6)
-  cours             Cours[]
-  evaluations       Evaluation[]
-  quiz              Quiz[]
-  devoirs           Devoir[]
-  formation         Formation         @relation(fields: [formationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  seances           SeanceFormation[]
+  id          String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  formationId String            @map("formation_id") @db.Uuid
+  titre       String            @db.VarChar(255)
+  ordre       Int
+  coefficient Decimal?          @default(1.00) @db.Decimal(4, 2)
+  createdAt   DateTime?         @default(now()) @map("created_at") @db.Timestamptz(6)
+  cours       Cours[]
+  evaluations Evaluation[]
+  quiz        Quiz[]
+  devoirs     Devoir[]
+  formation   Formation         @relation(fields: [formationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  seances     SeanceFormation[]
 
   @@index([formationId], map: "idx_modules_formation")
   @@map("modules")
 }
 
 model Note {
-  id            String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  evaluationId  String     @map("evaluation_id") @db.Uuid
-  utilisateurId String     @map("apprenant_id") @db.Uuid
-  formateurId   String     @map("formateur_id") @db.Uuid
-  valeur        Decimal    @map("note_obtenue") @db.Decimal(4, 2)
-  dateNotation  DateTime?  @default(now()) @map("date_notation") @db.Timestamptz(6)
+  id            String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  evaluationId  String      @map("evaluation_id") @db.Uuid
+  utilisateurId String      @map("apprenant_id") @db.Uuid
+  formateurId   String      @map("formateur_id") @db.Uuid
+  valeur        Decimal     @map("note_obtenue") @db.Decimal(4, 2)
+  dateNotation  DateTime?   @default(now()) @map("date_notation") @db.Timestamptz(6)
   utilisateur   Utilisateur @relation("notes_apprenant", fields: [utilisateurId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  evaluation    Evaluation @relation(fields: [evaluationId], references: [id], onUpdate: NoAction)
+  evaluation    Evaluation  @relation(fields: [evaluationId], references: [id], onUpdate: NoAction)
   formateur     Utilisateur @relation("notes_formateur", fields: [formateurId], references: [id], onUpdate: NoAction)
 
   @@unique([evaluationId, utilisateurId], map: "unique_note_apprenant_evaluation")
@@ -114,25 +135,25 @@ model Note {
 }
 
 model PresenceSeance {
-  seanceId             String          @map("seance_id") @db.Uuid
-  utilisateurId        String          @map("apprenant_id") @db.Uuid
-  statut               statut_presence @default(ABSENT)
-  remarqueJustification String?        @map("remarque_justification")
-  misAJourA            DateTime?       @default(now()) @map("mis_a_jour_a") @db.Timestamptz(6)
-  utilisateur          Utilisateur     @relation(fields: [utilisateurId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  seance               SeanceFormation @relation(fields: [seanceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  seanceId              String          @map("seance_id") @db.Uuid
+  utilisateurId         String          @map("apprenant_id") @db.Uuid
+  statut                statut_presence @default(ABSENT)
+  remarqueJustification String?         @map("remarque_justification")
+  misAJourA             DateTime?       @default(now()) @map("mis_a_jour_a") @db.Timestamptz(6)
+  utilisateur           Utilisateur     @relation(fields: [utilisateurId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  seance                SeanceFormation @relation(fields: [seanceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([seanceId, utilisateurId])
   @@map("presences_seances")
 }
 
 model UserProgress {
-  utilisateurId   String    @map("apprenant_id") @db.Uuid
-  coursId         String    @map("cours_id") @db.Uuid
-  complete        Boolean?  @default(false) @map("termine")
-  dateTerminaison DateTime? @map("date_terminaison") @db.Timestamptz(6)
+  utilisateurId   String      @map("apprenant_id") @db.Uuid
+  coursId         String      @map("cours_id") @db.Uuid
+  complete        Boolean?    @default(false) @map("termine")
+  dateTerminaison DateTime?   @map("date_terminaison") @db.Timestamptz(6)
   utilisateur     Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  cours           Cours     @relation(fields: [coursId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  cours           Cours       @relation(fields: [coursId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([utilisateurId, coursId])
   @@index([utilisateurId, complete], map: "idx_progression_apprenant_statut")
@@ -141,63 +162,79 @@ model UserProgress {
 }
 
 model SeanceFormation {
-  id               String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  moduleId         String            @map("module_id") @db.Uuid
-  coursId          String?           @map("cours_id") @db.Uuid
-  formateurId      String            @map("formateur_id") @db.Uuid
-  titreActivite    String            @map("titre_activite") @db.VarChar(255)
-  typeSession      type_seance       @default(THEORIQUE) @map("type_session")
-  dateHeureDebut   DateTime          @map("date_heure_debut") @db.Timestamptz(6)
-  dateHeureFin     DateTime          @map("date_heure_fin") @db.Timestamptz(6)
-  salleOuLien      String?           @map("salle_ou_lien") @db.VarChar(255)
-  createdAt        DateTime?         @default(now()) @map("created_at") @db.Timestamptz(6)
-  presences        PresenceSeance[]
-  cours            Cours?            @relation(fields: [coursId], references: [id], onUpdate: NoAction)
-  formateur        Utilisateur       @relation(fields: [formateurId], references: [id], onUpdate: NoAction)
-  module           Module            @relation(fields: [moduleId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id             String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  moduleId       String           @map("module_id") @db.Uuid
+  coursId        String?          @map("cours_id") @db.Uuid
+  formateurId    String           @map("formateur_id") @db.Uuid
+  titreActivite  String           @map("titre_activite") @db.VarChar(255)
+  typeSession    type_seance      @default(THEORIQUE) @map("type_session")
+  dateHeureDebut DateTime         @map("date_heure_debut") @db.Timestamptz(6)
+  dateHeureFin   DateTime         @map("date_heure_fin") @db.Timestamptz(6)
+  salleOuLien    String?          @map("salle_ou_lien") @db.VarChar(255)
+  createdAt      DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
+  presences      PresenceSeance[]
+  cours          Cours?           @relation(fields: [coursId], references: [id], onUpdate: NoAction)
+  formateur      Utilisateur      @relation(fields: [formateurId], references: [id], onUpdate: NoAction)
+  module         Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([dateHeureDebut, dateHeureFin], map: "idx_seances_debut_fin")
   @@map("seances_formation")
 }
 
 model AuditLog {
-  id              BigInt       @id @default(autoincrement())
-  timestamp       DateTime?    @default(now()) @db.Timestamptz(6)
-  ipAdresse       String       @map("adresse_ip") @db.VarChar(45)
-  auteurId        String?      @map("utilisateur_id") @db.Uuid
-  action          String       @map("action_effectuee") @db.VarChar(100)
-  tableCible      String       @default("inconnue") @map("table_cible") @db.VarChar(100)
-  details         Json?        @map("etat_apres")
-  etatAvant       Json?        @map("etat_avant")
-  auteur          Utilisateur? @relation(fields: [auteurId], references: [id], onUpdate: NoAction)
+  id         BigInt       @id @default(autoincrement())
+  timestamp  DateTime?    @default(now()) @db.Timestamptz(6)
+  ipAdresse  String       @map("adresse_ip") @db.VarChar(45)
+  auteurId   String?      @map("utilisateur_id") @db.Uuid
+  action     String       @map("action_effectuee") @db.VarChar(100)
+  tableCible String       @default("inconnue") @map("table_cible") @db.VarChar(100)
+  details    Json?        @map("etat_apres")
+  etatAvant  Json?        @map("etat_avant")
+  auteur     Utilisateur? @relation(fields: [auteurId], references: [id], onUpdate: NoAction)
 
   @@map("table_audit")
 }
 
 model Utilisateur {
-  id                                     String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  etablissementId                        String            @map("etablissement_id") @db.Uuid
-  nom                                    String            @db.VarChar(100)
-  prenom                                 String            @db.VarChar(100)
-  email                                  String            @unique @db.VarChar(255)
-  password                               String            @map("mot_de_passe_hash") @db.VarChar(255)
-  role                                   utilisateur_role
-  actif                                  Boolean?          @default(true) @map("est_actif")
-  createdAt                              DateTime?         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                              DateTime?         @default(now()) @map("updated_at") @db.Timestamptz(6)
-  certificats                            Certificat[]
-  notesApprenant                         Note[]            @relation("notes_apprenant")
-  notesFormateur                         Note[]            @relation("notes_formateur")
-  presences                              PresenceSeance[]
-  progress                               UserProgress[]
-  seances                                SeanceFormation[]
-  auditLogs                              AuditLog[]
-  tentativesQuiz                         TentativeQuiz[]
-  soumissionsDevoir                      SoumissionDevoir[]
-  etablissement                          Etablissement     @relation(fields: [etablissementId], references: [id], onUpdate: NoAction)
+  id                String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  etablissementId   String             @map("etablissement_id") @db.Uuid
+  nom               String             @db.VarChar(100)
+  prenom            String             @db.VarChar(100)
+  email             String             @unique @db.VarChar(255)
+  password          String             @map("mot_de_passe_hash") @db.VarChar(255)
+  role              utilisateur_role
+  actif             Boolean?           @default(true) @map("est_actif")
+  createdAt         DateTime?          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime?          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  certificats       Certificat[]
+  notesApprenant    Note[]             @relation("notes_apprenant")
+  notesFormateur    Note[]             @relation("notes_formateur")
+  presences         PresenceSeance[]
+  progress          UserProgress[]
+  seances           SeanceFormation[]
+  auditLogs         AuditLog[]
+  tentativesQuiz    TentativeQuiz[]
+  soumissionsDevoir SoumissionDevoir[]
+  refreshTokens     RefreshToken[]
+  etablissement     Etablissement      @relation(fields: [etablissementId], references: [id], onUpdate: NoAction)
+  apprenantProfile  Apprenant?
 
   @@index([etablissementId], map: "idx_utilisateurs_etablissement")
   @@map("utilisateurs")
+}
+
+model RefreshToken {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  token         String    @unique @db.VarChar(512)
+  utilisateurId String    @map("utilisateur_id") @db.Uuid
+  expiresAt     DateTime? @map("expires_at") @db.Timestamptz(6)
+  revoked       Boolean   @default(false)
+  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  utilisateur Utilisateur @relation(fields: [utilisateurId], references: [id], onUpdate: NoAction)
+
+  @@index([utilisateurId], map: "idx_refresh_tokens_utilisateur")
+  @@map("refresh_tokens")
 }
 
 enum statut_presence {
@@ -288,4 +325,388 @@ model SoumissionDevoir {
 
   @@unique([devoirId, apprenantId])
   @@map("soumissions_devoirs")
+}
+
+model LandingPageSettings {
+  id                             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  heroTitre                      String   @default("Vitalis Center, la formation professionnelle reconnue par l'État") @map("hero_titre")
+  heroSousTitre                  String   @default("Vitalis Center EUP forme les professionnels, cadres et jeunes talents aux métiers d'avenir sous la tutelle du Ministère de la Formation Professionnelle. Validation par compétences pratiques, encadrement expert et délivrance de certificats officiels infalsifiables.") @map("hero_sous_titre")
+  heroNumeroAgrement             String   @default("N°CFP 00095/MIN-FP/DG-FP/KMG/JPU/2026") @map("hero_numero_agrement")
+  topbarTexte                    String   @default("République Démocratique du Congo · Ministère de la Formation Professionnelle") @map("topbar_texte")
+  statsLaureats                  Int      @default(1200) @map("stats_laureats")
+  statsTauxReussite              Int      @default(94) @map("stats_taux_reussite")
+  statsFilieres                  Int      @default(15) @map("stats_filieres")
+  statsTitresVerif               Int      @default(100) @map("stats_titres_verif")
+  ctaTitre                       String   @default("Prêt à développer des compétences certifiées ?") @map("cta_titre")
+  ctaSousTitre                   String   @default("Les inscriptions pour la session 2026 sont actuellement ouvertes.") @map("cta_sous_titre")
+  formationsSurMesureTitre       String   @default("Formations intra-entreprise & sur mesure") @map("formations_sur_mesure_titre")
+  formationsSurMesureDescription String   @default("Nous concevons des programmes spécialisés pour les ministères et entreprises publiques et privées.") @map("formations_sur_mesure_description")
+  verifTitre                     String   @default("Vérifier l'Authenticité d'un Certificat") @map("verif_titre")
+  verifSousTitre                 String   @default("Entrez le numéro de série officiel délivré par Vitalis Center pour vérifier son authenticité en temps réel auprès du registre officiel.") @map("verif_sous_titre")
+  verifExempleNumero             String   @default("CERT-2026-00001") @map("verif_exemple_numero")
+  contactAdresse                 String   @default("Kinshasa, République Démocratique du Congo") @map("contact_adresse")
+  contactEmail                   String   @default("contact@vitalis-center.cd") @map("contact_email")
+  contactHoraires                String   @default("Lundi – Vendredi : 08h00 – 16h30 | Samedi : 08h30 – 12h30") @map("contact_horaires")
+  contactTelephone               String   @default("+243 ...") @map("contact_telephone")
+  footerDescription              String   @default("Vitalis Center EUP (Établissement d'Utilité Publique) · Centre de formation professionnelle et technique agréé par le Ministère de la Formation Professionnelle de la RDC.") @map("footer_description")
+  footerTutelleTexte             String   @default("Supervision institutionnelle et contrôle de conformité des attestations et certifications nationales.") @map("footer_tutelle_texte")
+  footerCopyright                String   @default("© 2026 Vitalis Center EUP. Tous droits réservés.") @map("footer_copyright")
+  footerBarreTexte               String   @default("Vitalis Center (EUP — Établissement d'Utilité Publique) · Système de gestion et certification de la formation professionnelle · Édition 2026") @map("footer_barre_texte")
+  updatedAt                      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("landing_page_settings")
+}
+
+model LandingPageSection {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  typeSection String   @map("type_section") @db.VarChar(50)
+  titre       String   @db.VarChar(255)
+  sousTitre   String?  @map("sous_titre")
+  description String?
+  ordre       Int      @default(0)
+  couleur     String?  @db.VarChar(20)
+  icone       String?  @db.VarChar(50)
+  actif       Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([typeSection, ordre])
+  @@map("landing_page_sections")
+}
+
+model LandingPageTemoignage {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nom       String   @db.VarChar(150)
+  initiales String   @db.VarChar(10)
+  role      String   @db.VarChar(150)
+  promotion String?  @db.VarChar(50)
+  citation  String
+  couleur   String   @default("#1C75BC") @db.VarChar(20)
+  ordre     Int      @default(0)
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("landing_page_temoignages")
+}
+
+model LandingPageActualite {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  titre           String   @db.VarChar(255)
+  chapeau         String?
+  contenu         String?
+  categorie       String   @default("VIE_DU_CENTRE") @db.VarChar(100)
+  imageUrl        String?  @map("image_url")
+  videoUrl        String?  @map("video_url")
+  badgeCouleur    String   @default("#1C75BC") @map("badge_couleur") @db.VarChar(20)
+  datePublication DateTime @default(now()) @map("date_publication") @db.Timestamptz(6)
+  auteur          String   @default("Direction de la Communication") @db.VarChar(150)
+  aLaUne          Boolean  @default(false) @map("a_la_une")
+  ordre           Int      @default(0)
+  actif           Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([actif, ordre])
+  @@map("landing_page_actualites")
+}
+
+enum type_etablissement {
+  MERE
+  SATELLITE_NATIONAL
+  SATELLITE_INTERNATIONAL
+}
+
+enum statut_etablissement {
+  PROVISIONNE
+  ACTIF
+  SUSPENDU
+  FERME
+}
+
+enum statut_candidature {
+  BROUILLON
+  SOUMISE
+  EN_EVALUATION
+  ADMISE
+  LISTE_ATTENTE
+  REJETEE
+  CONFIRMEE
+  INSCRITE
+  RETIREE
+  EXPIREE
+}
+
+enum mode_selection {
+  PREMIER_ARRIVE
+  DOSSIER_NOTES
+  TEST_APTITUDE
+  ENTRETIEN
+  MIXTE
+}
+
+enum statut_session_admission {
+  BROUILLON
+  OUVERTE
+  FERMEE
+  TRAITEMENT
+  CLOTUREE
+}
+
+enum statut_inscription {
+  RESERVEE
+  ACTIVE
+  TERMINEE
+  ABANDONNEE
+  ANNULEE
+}
+
+enum politique_candidature_concurrente {
+  BLOCAGE_STRICT
+  AUTORISATION_ALERTE
+  MISE_EN_RESERVE
+}
+
+enum type_piece_candidature {
+  PIECE_IDENTITE
+  DIPLOME
+  RELEVE_NOTES
+  PHOTO
+  AUTRE
+}
+
+model ParametresReseau {
+  id                              String                            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  etablissementMereId             String                            @unique @map("etablissement_mere_id") @db.Uuid
+  politiqueCandidatureConcurrente politique_candidature_concurrente @default(MISE_EN_RESERVE) @map("politique_concurrente")
+  maxVoeuxParApprenant            Int                               @default(5) @map("max_voeux")
+  delaiConfirmationDefautJours    Int                               @default(7) @map("delai_confirmation_jours")
+  matriculePrefixe                String                            @default("VIT") @map("matricule_prefixe") @db.VarChar(10)
+  updatedAt                       DateTime                          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  etablissementMere Etablissement @relation(fields: [etablissementMereId], references: [id], onUpdate: NoAction)
+
+  @@map("parametres_reseau")
+}
+
+model Filiere {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code        String   @unique @db.VarChar(20)
+  libelle     String   @db.VarChar(255)
+  description String?
+  actif       Boolean  @default(true)
+  ordre       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  formationsReferentiel FormationReferentiel[]
+  sessionsAdmission     SessionAdmission[]
+  validationsNiveau     ValidationNiveau[]
+
+  @@map("filieres")
+}
+
+model Niveau {
+  id      String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code    String  @unique @db.VarChar(20)
+  libelle String  @db.VarChar(255)
+  ordre   Int
+  actif   Boolean @default(true)
+
+  formationsReferentiel FormationReferentiel[]
+  sessionsAdmission     SessionAdmission[]
+  prerequis             PrerequisNiveau[]      @relation("NiveauCible")
+  prerequisDe           PrerequisNiveau[]      @relation("NiveauRequis")
+  validationsNiveau     ValidationNiveau[]
+
+  @@map("niveaux")
+}
+
+model FormationReferentiel {
+  id          String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  filiereId   String  @map("filiere_id") @db.Uuid
+  niveauId    String  @map("niveau_id") @db.Uuid
+  libelle     String  @db.VarChar(255)
+  description String?
+  actif       Boolean @default(true)
+
+  filiere    Filiere     @relation(fields: [filiereId], references: [id], onUpdate: NoAction)
+  niveau     Niveau      @relation(fields: [niveauId], references: [id], onUpdate: NoAction)
+  formations Formation[]
+
+  @@unique([filiereId, niveauId], map: "unique_filiere_niveau")
+  @@map("formations_referentiel")
+}
+
+model PrerequisNiveau {
+  id             String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  niveauCibleId  String @map("niveau_cible_id") @db.Uuid
+  niveauRequisId String @map("niveau_requis_id") @db.Uuid
+
+  niveauCible  Niveau @relation("NiveauCible", fields: [niveauCibleId], references: [id], onUpdate: NoAction)
+  niveauRequis Niveau @relation("NiveauRequis", fields: [niveauRequisId], references: [id], onUpdate: NoAction)
+
+  @@unique([niveauCibleId, niveauRequisId])
+  @@map("prerequis_niveaux")
+}
+
+model Apprenant {
+  id                     String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  matricule              String    @unique @db.VarChar(20)
+  nom                    String    @db.VarChar(100)
+  prenom                 String    @db.VarChar(100)
+  email                  String    @unique @db.VarChar(255)
+  telephone              String?   @db.VarChar(30)
+  dateNaissance          DateTime? @map("date_naissance") @db.Date
+  numeroIdentite         String?   @map("numero_identite") @db.VarChar(50)
+  paysOrigine            String?   @map("pays_origine") @db.VarChar(3)
+  utilisateurId          String?   @unique @map("utilisateur_id") @db.Uuid
+  etablissementOrigineId String?   @map("etablissement_origine_id") @db.Uuid
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  utilisateur          Utilisateur?       @relation(fields: [utilisateurId], references: [id], onUpdate: NoAction)
+  etablissementOrigine Etablissement?     @relation(fields: [etablissementOrigineId], references: [id], onUpdate: NoAction)
+  candidatures         Candidature[]
+  inscriptions         Inscription[]
+  validationsNiveau    ValidationNiveau[]
+
+  @@index([numeroIdentite], map: "idx_apprenants_identite")
+  @@map("apprenants")
+}
+
+model ValidationNiveau {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  apprenantId    String   @map("apprenant_id") @db.Uuid
+  niveauId       String   @map("niveau_id") @db.Uuid
+  filiereId      String   @map("filiere_id") @db.Uuid
+  certificatId   String?  @map("certificat_id") @db.Uuid
+  dateValidation DateTime @default(now()) @map("date_validation") @db.Timestamptz(6)
+
+  apprenant  Apprenant   @relation(fields: [apprenantId], references: [id], onUpdate: NoAction)
+  niveau     Niveau      @relation(fields: [niveauId], references: [id], onUpdate: NoAction)
+  filiere    Filiere     @relation(fields: [filiereId], references: [id], onUpdate: NoAction)
+  certificat Certificat? @relation(fields: [certificatId], references: [id], onUpdate: NoAction)
+
+  @@unique([apprenantId, niveauId, filiereId])
+  @@map("validations_niveau")
+}
+
+model SessionAdmission {
+  id                     String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  etablissementId        String                   @map("etablissement_id") @db.Uuid
+  filiereId              String                   @map("filiere_id") @db.Uuid
+  niveauId               String                   @map("niveau_id") @db.Uuid
+  formationId            String?                  @map("formation_id") @db.Uuid
+  libelle                String                   @db.VarChar(255)
+  statut                 statut_session_admission @default(BROUILLON)
+  modeSelection          mode_selection           @default(MIXTE) @map("mode_selection")
+  capacite               Int                      @default(30)
+  dateOuverture          DateTime                 @map("date_ouverture") @db.Timestamptz(6)
+  dateFermeture          DateTime                 @map("date_fermeture") @db.Timestamptz(6)
+  dateDebutFormation     DateTime                 @map("date_debut_formation") @db.Timestamptz(6)
+  delaiConfirmationJours Int?                     @map("delai_confirmation_jours")
+  createdAt              DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  etablissement Etablissement @relation(fields: [etablissementId], references: [id], onUpdate: NoAction)
+  filiere       Filiere       @relation(fields: [filiereId], references: [id], onUpdate: NoAction)
+  niveau        Niveau        @relation(fields: [niveauId], references: [id], onUpdate: NoAction)
+  formation     Formation?    @relation(fields: [formationId], references: [id], onUpdate: NoAction)
+  candidatures  Candidature[]
+  inscriptions  Inscription[]
+
+  @@index([etablissementId, statut], map: "idx_sessions_etab_statut")
+  @@index([filiereId, niveauId], map: "idx_sessions_filiere_niveau")
+  @@map("sessions_admission")
+}
+
+model Candidature {
+  id                      String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  apprenantId             String             @map("apprenant_id") @db.Uuid
+  sessionId               String             @map("session_id") @db.Uuid
+  statut                  statut_candidature @default(BROUILLON)
+  scoreEvaluation         Decimal?           @map("score_evaluation") @db.Decimal(5, 2)
+  rangListeAttente        Int?               @map("rang_liste_attente")
+  motifRejet              String?            @map("motif_rejet")
+  dateSoumission          DateTime?          @map("date_soumission") @db.Timestamptz(6)
+  dateDecision            DateTime?          @map("date_decision") @db.Timestamptz(6)
+  dateConfirmation        DateTime?          @map("date_confirmation") @db.Timestamptz(6)
+  dateExpiration          DateTime?          @map("date_expiration") @db.Timestamptz(6)
+  commentaireGestionnaire String?            @map("commentaire_gestionnaire")
+  metadonneesLocales      Json?              @map("metadonnees_locales")
+  conflitCalendrier       Boolean            @default(false) @map("conflit_calendrier")
+  createdAt               DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  apprenant   Apprenant               @relation(fields: [apprenantId], references: [id], onUpdate: NoAction)
+  session     SessionAdmission        @relation(fields: [sessionId], references: [id], onUpdate: NoAction)
+  pieces      PieceCandidature[]
+  historique  HistoriqueCandidature[]
+  inscription Inscription?
+
+  @@unique([apprenantId, sessionId], map: "unique_apprenant_session")
+  @@index([sessionId, statut], map: "idx_candidatures_session_statut")
+  @@index([apprenantId, statut], map: "idx_candidatures_apprenant_statut")
+  @@map("candidatures")
+}
+
+model PieceCandidature {
+  id            String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  candidatureId String                 @map("candidature_id") @db.Uuid
+  type          type_piece_candidature
+  fileUrl       String                 @map("file_url") @db.VarChar(512)
+  nomFichier    String                 @map("nom_fichier") @db.VarChar(255)
+  valide        Boolean?               @default(false)
+  uploadedAt    DateTime               @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+
+  candidature Candidature @relation(fields: [candidatureId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("pieces_candidature")
+}
+
+model HistoriqueCandidature {
+  id            BigInt              @id @default(autoincrement())
+  candidatureId String              @map("candidature_id") @db.Uuid
+  statutAvant   statut_candidature? @map("statut_avant")
+  statutApres   statut_candidature  @map("statut_apres")
+  auteurId      String?             @map("auteur_id") @db.Uuid
+  commentaire   String?
+  timestamp     DateTime            @default(now()) @db.Timestamptz(6)
+
+  candidature Candidature @relation(fields: [candidatureId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([candidatureId], map: "idx_historique_candidature")
+  @@map("historique_candidatures")
+}
+
+model Inscription {
+  id            String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  apprenantId   String             @map("apprenant_id") @db.Uuid
+  formationId   String             @map("formation_id") @db.Uuid
+  candidatureId String?            @unique @map("candidature_id") @db.Uuid
+  sessionId     String?            @map("session_id") @db.Uuid
+  statut        statut_inscription @default(ACTIVE)
+  dateDebut     DateTime           @default(now()) @map("date_debut") @db.Timestamptz(6)
+  dateFin       DateTime?          @map("date_fin") @db.Timestamptz(6)
+
+  apprenant   Apprenant         @relation(fields: [apprenantId], references: [id], onUpdate: NoAction)
+  formation   Formation         @relation(fields: [formationId], references: [id], onUpdate: NoAction)
+  candidature Candidature?      @relation(fields: [candidatureId], references: [id], onUpdate: NoAction)
+  session     SessionAdmission? @relation(fields: [sessionId], references: [id], onUpdate: NoAction)
+
+  @@unique([apprenantId, formationId], map: "unique_apprenant_formation")
+  @@index([apprenantId, statut], map: "idx_inscriptions_apprenant_statut")
+  @@index([sessionId], map: "idx_inscriptions_session")
+  @@map("inscriptions")
+}
+
+model ContactMessage {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nom       String   @db.VarChar(150)
+  telephone String   @db.VarChar(40)
+  filiere   String?  @db.VarChar(255)
+  message   String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("contact_messages")
 }

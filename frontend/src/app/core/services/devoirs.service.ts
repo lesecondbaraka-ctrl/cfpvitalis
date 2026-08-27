@@ -55,4 +55,12 @@ export class DevoirsService {
   mesSoumissions(): Observable<SoumissionDevoir[]> {
     return this.http.get<SoumissionDevoir[]>(`${this.url}/mes/soumissions`);
   }
+
+  update(id: string, data: { titre?: string; consignes?: string; dateLimite?: string }): Observable<Devoir> {
+    return this.http.put<Devoir>(`${this.url}/${id}`, data);
+  }
+
+  delete(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.url}/${id}`);
+  }
 }
