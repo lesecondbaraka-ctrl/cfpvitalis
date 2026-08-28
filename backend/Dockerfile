@@ -16,4 +16,4 @@ COPY prisma.config.ts ./
 RUN npx prisma generate
 RUN mkdir -p uploads
 EXPOSE 3000
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main.js"]
