@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { DevoirsService, Devoir, SoumissionDevoir } from '../../../core/services/devoirs.service';
 import { PedagogieService } from '../../../core/services/pedagogie.service';
 import { MainLayoutComponent } from '../../../shared/layout/main-layout.component';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-devoirs-noter',
@@ -91,7 +92,7 @@ export class DevoirsNoterComponent implements OnInit {
   }
 
   fileUrl(url: string) {
-    return url.startsWith('http') ? url : `http://localhost:3000${url}`;
+    return url.startsWith('http') ? url : `${environment.apiUrl.replace('/api', '')}${url}`;
   }
 
   noter(s: SoumissionDevoir) {
