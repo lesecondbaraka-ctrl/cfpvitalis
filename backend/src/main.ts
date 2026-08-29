@@ -40,22 +40,58 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:4200')
+  const rawCorsOrigin = process.env.CORS_ORIGIN || '';
+  const allowedOrigins = rawCorsOrigin
     .split(',')
-    .map((o) => o.trim())
+    .map((o) => o.trim().replace(/\/$/, ''))
     .filter(Boolean);
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, server-to-server) or in whitelist
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Bloqué par la politique CORS Vitalis Center.'));
+      // Autoriser les requêtes sans header origin (outils CLI, requêtes internes, SSR, curl)
+      if (!origin) {
+        return callback(null, true);
       }
+
+      const cleanOrigin = origin.replace(/\/$/, '');
+
+      // Mode wildcard explicite ou liste vide en mode dev/cloud
+      if (rawCorsOrigin === '*' || allowedOrigins.includes('*')) {
+        return callback(null, true);
+      }
+
+      // Correspondance exacte dans la liste blanche
+      if (allowedOrigins.includes(cleanOrigin)) {
+        return callback(null, true);
+      }
+
+      // Tolérance pour localhost, 127.0.0.1, sous-domaines cloud courants (Render, Vercel, Netlify)
+      const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(cleanOrigin);
+      const isRender = /^https:\/\/[\w-]+(\.[\w-]+)*\.onrender\.com$/.test(cleanOrigin);
+      const isVercel = /^https:\/\/[\w-]+(\.[\w-]+)*\.vercel\.app$/.test(cleanOrigin);
+      const isNetlify = /^https:\/\/[\w-]+(\.[\w-]+)*\.netlify\.app$/.test(cleanOrigin);
+
+      if (isLocalhost || isRender || isVercel || isNetlify) {
+        return callback(null, true);
+      }
+
+      // Rejet propre sans lever d'exception 500
+      return callback(null, false);
     },
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'Origin',
+      'X-Requested-With',
+      'x-tenant-id',
+      'x-swagger-token',
+      'Range',
+    ],
+    exposedHeaders: ['Content-Disposition', 'Content-Range', 'Accept-Ranges', 'Content-Length'],
     credentials: true,
+    maxAge: 86400, // 24h cache preflight
   });
 
   // Rate limiter strict pour l'authentification (Protection Brute-Force ANSSI)
@@ -119,7 +155,7 @@ async function bootstrap() {
   }
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
-  console.log(`Vitalis Center API — http://localhost:${port}/api`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`Vitalis Center API démarré sur http://0.0.0.0:${port}/api`);
 }
 bootstrap();

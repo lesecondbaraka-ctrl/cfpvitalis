@@ -15,8 +15,15 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('should return status ok', () => {
+      const res = appController.getInfo();
+      expect(res.status).toBe('ok');
+      expect(res.service).toBe('Vitalis Center API');
+    });
+
+    it('should return health ok', () => {
+      const res = appController.getHealth();
+      expect(res.status).toBe('ok');
     });
   });
 });
