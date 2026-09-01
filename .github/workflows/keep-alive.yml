@@ -1,0 +1,24 @@
+name: Keep Backend Alive
+
+on:
+  schedule:
+    # Ping every 10 minutes (cron syntax)
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping Render Backend Health Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send GET Request to Health Endpoint
+        run: |
+          BACKEND_URL="${{ secrets.BACKEND_HEALTH_URL || 'https://cfpvitalis-backend.onrender.com/api/health' }}"
+          echo "Pinging: $BACKEND_URL"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$BACKEND_URL")
+          echo "HTTP Status Code: $STATUS"
+          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
+            echo "Backend is alive!"
+          else
+            echo "Warning: Response status was $STATUS"
+          fi
