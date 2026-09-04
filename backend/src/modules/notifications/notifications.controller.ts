@@ -1,24 +1,25 @@
-import { Controller, Sse, Req, UseGuards, UnauthorizedException } from '@nestjs/common';
+import { Controller, Sse, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { NotificationsService } from './notifications.service';
+import { NotificationsService, NotificationPayload } from './notifications.service';
 
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
 
   /**
-   * SSE stream — authentifié par JWT.
-   * Le frontend doit passer le token via query param `token` car EventSource
-   * ne supporte pas les headers Authorization.
+   * SSE stream authentifié — filtré par utilisateur.
+   * Chaque client reçoit uniquement les événements qui le concernent
+   * (événement ciblé recipientUserId ou diffusion établissement recipientEtablissementId).
+   * Le token JWT est passé en query param car EventSource ne supporte pas les headers Authorization.
    * Ex: new EventSource('/api/notifications/sse?token=<jwt>')
    */
   @UseGuards(JwtAuthGuard)
   @Sse('sse')
   sse(@Req() req: any): Observable<MessageEvent> {
-    return this.notifications.stream().pipe(
-      map((payload) => ({ data: payload } as unknown as MessageEvent)),
+    return this.notifications.streamForUser(req.user).pipe(
+      map((payload: NotificationPayload) => ({ data: payload } as unknown as MessageEvent)),
     );
   }
 }

@@ -58,10 +58,17 @@ export class ApprenantService {
       return { etablissementId: user.etablissementId };
     }
     const inscriptions = await this.prisma.inscription.findMany({
-      where: { apprenantId: profile.id, statut: { in: ['ACTIVE', 'RESERVEE'] } },
+      where: { apprenantId: profile.id, statut: { in: ['ACTIVE', 'RESERVEE', 'TERMINEE'] } },
       select: { formationId: true },
     });
-    const ids = inscriptions.map((i) => i.formationId);
+    const certifs = await this.prisma.certificat.findMany({
+      where: { utilisateurId: user.id },
+      select: { formationId: true },
+    });
+    const ids = Array.from(new Set([
+      ...inscriptions.map((i) => i.formationId),
+      ...certifs.map((c) => c.formationId),
+    ]));
     if (!ids.length) {
       return { id: { in: ['00000000-0000-0000-0000-000000000000'] } };
     }
@@ -69,6 +76,13 @@ export class ApprenantService {
   }
 
   private async assertFormationAccess(formationId: string, user: any) {
+    // 1. Si l'apprenant détient un certificat officiel pour cette formation, l'accès est garanti
+    const cert = await this.prisma.certificat.findFirst({
+      where: { formationId, utilisateurId: user.id },
+      select: { id: true },
+    });
+    if (cert) return;
+
     const filter = await this.formationFilterForUser(user);
     if (filter.etablissementId) {
       const formation = await this.prisma.formation.findUnique({ where: { id: formationId } });
@@ -235,6 +249,9 @@ export class ApprenantService {
     const formations = await this.prisma.formation.findMany({
       where: await this.formationFilterForUser(user),
       include: {
+        etablissement: {
+          select: { id: true, nom: true, codeAntenne: true },
+        },
         modules: {
           orderBy: { ordre: 'asc' },
           include: {
@@ -273,17 +290,22 @@ export class ApprenantService {
       const fCoursIds = f.modules.flatMap((m) => m.cours.map((c) => c.id));
       const fTotal = fCoursIds.length;
       const fCompleted = fCoursIds.filter((id) => completedSet.has(id)).length;
-      const fPourcentage = fTotal > 0 ? Math.round((fCompleted / fTotal) * 100) : 0;
       const certif = f.certificats[0] || null;
+      const fPourcentage = certif ? 100 : (fTotal > 0 ? Math.round((fCompleted / fTotal) * 100) : 0);
+      const totalQuiz = f.modules.reduce((acc, m) => acc + (m.quiz?.length || 0), 0);
+      const totalDevoirs = f.modules.reduce((acc, m) => acc + (m.devoirs?.length || 0), 0);
 
       return {
         id: f.id,
         titre: f.titre,
         description: f.description,
         createdAt: f.createdAt,
+        etablissement: f.etablissement,
         nbModules: f.modules.length,
         totalCours: fTotal,
         coursCompletes: fCompleted,
+        totalQuiz,
+        totalDevoirs,
         pourcentage: fPourcentage,
         estCertifie: !!certif,
         certificat: certif
@@ -370,8 +392,6 @@ export class ApprenantService {
     if (!formation) {
       throw new NotFoundException('Formation introuvable.');
     }
-
-    if (!formation) throw new NotFoundException('Formation introuvable.');
     await this.assertFormationAccess(formationId, user);
 
     // Récupérer les progressions de cours de l'utilisateur
@@ -948,13 +968,23 @@ export class ApprenantService {
   }
 
   /**
-   * Télécharger / récupérer le PDF d'un certificat
+   * Télécharger / récupérer le PDF d'un certificat avec données complètes
    */
   async getCertificatPdf(certificatId: string, user: any) {
     this.assertApprenant(user);
 
     const certificat = await this.prisma.certificat.findUnique({
       where: { id: certificatId },
+      include: {
+        utilisateur: { select: { id: true, nom: true, prenom: true, email: true } },
+        formation: {
+          select: {
+            id: true,
+            titre: true,
+            etablissement: { select: { id: true, nom: true, codeAntenne: true } },
+          },
+        },
+      },
     });
 
     if (!certificat) throw new NotFoundException('Certificat introuvable.');
@@ -962,10 +992,6 @@ export class ApprenantService {
       throw new ForbiddenException('Accès non autorisé à ce certificat.');
     }
 
-    return {
-      id: certificat.id,
-      numeroSerie: certificat.numeroSerie,
-      urlPdf: certificat.urlPdfS3,
-    };
+    return certificat;
   }
 }

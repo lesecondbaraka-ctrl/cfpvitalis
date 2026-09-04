@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { tap, shareReplay } from 'rxjs/operators';
+import { Observable, of, Subject } from 'rxjs';
+import { tap, map, shareReplay } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
+import { NotificationPayload } from './notifications.service';
 
 export interface ApprenantDashboard {
   completionGlobale: number;
@@ -35,9 +36,12 @@ export interface ApprenantFormation {
   titre: string;
   description: string;
   createdAt: string;
+  etablissement?: { id: string; nom: string; codeAntenne: string };
   nbModules: number;
   totalCours: number;
   coursCompletes: number;
+  totalQuiz?: number;
+  totalDevoirs?: number;
   pourcentage: number;
   estCertifie: boolean;
   certificat: {
@@ -189,6 +193,61 @@ export class ApprenantService {
 
   constructor(private http: HttpClient) {}
 
+  // ───────────────────────────────────────────────────────────
+  // BUS TEMPS RÉEL — événements SSE reçus et distribués aux composants
+  // ───────────────────────────────────────────────────────────
+  /** Bus interne : chaque message SSE reçu est relayé ici. */
+  readonly liveUpdates$ = new Subject<NotificationPayload>();
+
+  /**
+   * Appelé par ApprenantShellComponent lors de la réception d'un événement SSE.
+   * Invalide le cache puis recharge les données concernées en arrière-plan.
+   */
+  triggerRealtimeRefresh(event: NotificationPayload): void {
+    // 1. Invalider les caches pertinents selon le type d'événement
+    switch (event.type) {
+      case 'DEVOIR_NOTE':
+        localStorage.removeItem(this.CACHE_KEYS.DEVOIRS);
+        localStorage.removeItem(this.CACHE_KEYS.DASHBOARD);
+        break;
+      case 'NOTE_PUBLIEE':
+        localStorage.removeItem(this.CACHE_KEYS.DASHBOARD);
+        localStorage.removeItem(this.CACHE_KEYS.FORMATIONS);
+        // Invalider l'arborescence de toutes les formations (on ne sait pas laquelle)
+        this.invalidateModulesCache();
+        break;
+      case 'COURS_PUBLIE':
+        localStorage.removeItem(this.CACHE_KEYS.FORMATIONS);
+        this.invalidateModulesCache();
+        break;
+      case 'CERTIFICAT_EMIS':
+        localStorage.removeItem(this.CACHE_KEYS.CERTIFICATS);
+        localStorage.removeItem(this.CACHE_KEYS.DASHBOARD);
+        localStorage.removeItem(this.CACHE_KEYS.FORMATIONS);
+        break;
+      default:
+        this.invalidateCache();
+    }
+
+    // 2. Relayer l'événement aux composants abonnés
+    this.liveUpdates$.next(event);
+
+    // 3. Recharger le dashboard en arrière-plan (silencieusement)
+    this.getDashboard().subscribe({ error: () => {} });
+  }
+
+  /** Invalide uniquement les caches d'arborescence de modules. */
+  private invalidateModulesCache(): void {
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(this.CACHE_KEYS.MODULES_PREFIX)) keysToRemove.push(key);
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    } catch {}
+  }
+
   /**
    * Helper pour lire en toute sécurité depuis le localStorage
    */
@@ -288,12 +347,26 @@ export class ApprenantService {
 
   getEligibiliteCertificat(formationId: string): Observable<EligibiliteCertificat> {
     return this.http.get<EligibiliteCertificat>(`${this.apiUrl}/formations/${formationId}/eligibilite-certificat`).pipe(
+      map((res) => ({
+        ...res,
+        certificat: res.certificat
+          ? {
+              ...res.certificat,
+              urlPdfS3: this.resolveFileUrl(res.certificat.urlPdfS3),
+            }
+          : null,
+      })),
       shareReplay(1),
     );
   }
 
   getCoursContenu(coursId: string): Observable<CoursContenu> {
-    return this.http.get<CoursContenu>(`${this.apiUrl}/cours/${coursId}/contenu`);
+    return this.http.get<CoursContenu>(`${this.apiUrl}/cours/${coursId}/contenu`).pipe(
+      map((c) => ({
+        ...c,
+        fileUrl: c.fileUrl ? this.resolveFileUrl(c.fileUrl) : null,
+      }))
+    );
   }
 
   markCoursProgression(coursId: string): Observable<any> {
@@ -327,8 +400,27 @@ export class ApprenantService {
     );
   }
 
+  /**
+   * Résout les URLs de fichiers locaux (/uploads/...) vers le backend NestJS.
+   * En mode local, les fichiers sont servis par NestJS, pas Angular.
+   */
+  private resolveFileUrl(url: string): string {
+    if (url && url.startsWith('/uploads/')) {
+      // Mode stockage local : préfixer avec l'URL de base du backend
+      const backendBase = environment.apiUrl.replace('/api', '');
+      return `${backendBase}${url}`;
+    }
+    return url; // URL S3 absolue : inchangée
+  }
+
   getCertificats(): Observable<ApprenantCertificat[]> {
     return this.http.get<ApprenantCertificat[]>(`${this.apiUrl}/certificats`).pipe(
+      map((data) =>
+        data.map((c) => ({
+          ...c,
+          urlPdfS3: this.resolveFileUrl(c.urlPdfS3),
+        }))
+      ),
       tap((data) => this.setLocal(this.CACHE_KEYS.CERTIFICATS, data)),
       shareReplay(1),
     );

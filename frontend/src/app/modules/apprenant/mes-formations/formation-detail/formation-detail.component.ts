@@ -1,7 +1,8 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { Subscription } from 'rxjs';
 import {
   ApprenantService,
   FormationArborescence,
@@ -16,21 +17,39 @@ import { ToastService } from '../../../../core/services/toast.service';
   imports: [CommonModule, RouterLink],
   template: `
     <div class="space-y-8 animate-fade-in">
-      <!-- TOP BREADCRUMB & BACK -->
-      <div class="flex items-center gap-3">
+      <!-- TOP BREADCRUMB & ACTIONS -->
+      <div class="flex items-center justify-between gap-3">
         <a
           routerLink="/apprenant/formations"
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xs bg-white border border-[#D7DBDE] text-xs font-semibold text-[#1C75BC] hover:bg-[#E7F1FA] transition-all shadow-2xs"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xs bg-white border border-[#D7DBDE] text-xs font-semibold text-[#1C75BC] hover:bg-[#E7F1FA] transition-all shadow-2xs cursor-pointer"
         >
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
           <span>Retour aux formations</span>
         </a>
+
+        <!-- BOUTON ACTUALISER -->
+        <button
+          type="button"
+          (click)="rechargerTout(true)"
+          [disabled]="loading"
+          class="px-3 py-1.5 rounded-xs bg-white hover:bg-[#F5F6F7] text-[#1B1D1F] border border-[#D7DBDE] text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+          title="Rafraîchir les modules et progressions"
+        >
+          <svg
+            class="w-3.5 h-3.5 text-[#1C75BC]"
+            [class.animate-spin]="loading"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span class="hidden sm:inline">Actualiser</span>
+        </button>
       </div>
 
       @if (loading) {
-        <div class="p-16 text-center text-[#4B5157] bg-white border border-[#D7DBDE] rounded-xs">
+        <div class="p-16 text-center text-[#4B5157] bg-white border border-[#D7DBDE] rounded-xs shadow-xs">
           <div class="inline-block w-8 h-8 border-3 border-[#1C75BC] border-t-transparent rounded-full animate-spin mb-3"></div>
           <p class="text-xs font-semibold text-[#4B5157]">Chargement de l'arborescence pédagogique...</p>
         </div>
@@ -58,7 +77,7 @@ import { ToastService } from '../../../../core/services/toast.service';
               </h1>
               <div class="barre"></div>
               <p class="text-sm text-[#4B5157] leading-relaxed max-w-3xl pt-2">
-                {{ data.formation.description || 'Formation professionnelle qualifiante de Vitalis Center EUP.' }}
+                {{ data.formation.description || 'Formation professionnelle qualifiante de Vitalis Center EUP sous la tutelle du Ministère de la Formation Professionnelle.' }}
               </p>
             </div>
 
@@ -68,9 +87,9 @@ import { ToastService } from '../../../../core/services/toast.service';
                 {{ data.formation.progressionGlobale }}%
               </span>
               <span class="text-xs font-semibold text-[#4B5157] mt-1">Complétion Globale</span>
-              <div class="w-full bg-[#D7DBDE] h-1.5 mt-3 overflow-hidden">
+              <div class="w-full bg-[#D7DBDE] h-1.5 mt-3 overflow-hidden rounded-full">
                 <div
-                  class="h-1.5 transition-all duration-500"
+                  class="h-1.5 transition-all duration-500 rounded-full"
                   [class]="data.formation.progressionGlobale === 100 ? 'bg-[#276B44]' : 'bg-[#1C75BC]'"
                   [style.width.%]="data.formation.progressionGlobale"
                 ></div>
@@ -98,11 +117,11 @@ import { ToastService } from '../../../../core/services/toast.service';
                 </div>
                 <div>
                   <h2 class="text-xs font-bold uppercase tracking-wider" [class]="eligibilite.eligible ? 'text-[#276B44]' : 'text-[#F0791E]'">
-                    {{ eligibilite.eligible ? 'Éligibilité au Certificat Validée (BR-03)' : 'Conditions de Certification (BR-03)' }}
+                    {{ eligibilite.eligible ? 'Éligibilité au Certificat Validée (Règle BR-03)' : 'Conditions de Certification (Règle BR-03)' }}
                   </h2>
                   <div class="text-xs mt-1 leading-relaxed" [class]="eligibilite.eligible ? 'text-[#276B44]' : 'text-[#1B1D1F]'">
                     @if (eligibilite.dejaEmis) {
-                      <span>Votre certificat officiel a été émis et est disponible au téléchargement.</span>
+                      <span>Votre certificat officiel a été émis et est disponible au téléchargement direct.</span>
                     } @else if (eligibilite.eligible) {
                       <span>Félicitations ! Vous remplissez les critères (100% cours et moyenne $\ge$ 10/20). Votre certificat officiel est généré.</span>
                     } @else {
@@ -122,35 +141,79 @@ import { ToastService } from '../../../../core/services/toast.service';
                 </div>
               </div>
 
+              <!-- Actions Certificat BR-03 Fiabilisées (Sans 404) -->
               @if (eligibilite.dejaEmis && eligibilite.certificat) {
-                <a
-                  [href]="eligibilite.certificat.urlPdfS3"
-                  target="_blank"
-                  class="px-4 py-2.5 rounded-xs bg-[#276B44] hover:bg-[#1e5234] text-white text-xs font-bold shadow-xs flex items-center justify-center gap-2 whitespace-nowrap"
-                >
-                  <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  <span>Télécharger le Certificat</span>
-                </a>
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                  <a
+                    routerLink="/apprenant/certificats"
+                    class="px-3.5 py-2.5 rounded-xs bg-white text-[#276B44] border border-[#276B44] hover:bg-[#E7F1EA] text-xs font-bold shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+                    title="Voir dans le registre officiel des certificats"
+                  >
+                    <svg class="w-4 h-4 text-[#276B44]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    <span>Voir Certificat</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    (click)="telechargerCertificat(eligibilite.certificat.id, eligibilite.certificat.numeroSerie)"
+                    [disabled]="downloadingCert"
+                    class="px-4 py-2.5 rounded-xs bg-[#276B44] hover:bg-[#1e5234] text-white text-xs font-bold shadow-xs flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer disabled:opacity-60 transition-all"
+                  >
+                    @if (downloadingCert) {
+                      <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Téléchargement...</span>
+                    } @else {
+                      <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      <span>Télécharger PDF</span>
+                    }
+                  </button>
+                </div>
               }
             </div>
           }
         </div>
 
         <!-- MODULES & ARBORESCENCE -->
-        <div class="space-y-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <h2 class="text-lg font-bold text-[#1B1D1F] font-heading">
-                Modules de la Formation ({{ data.modules.length }})
-              </h2>
-              <div class="barre"></div>
+        @if (data.modules.length === 0) {
+          <div class="p-12 text-center bg-white border border-[#D7DBDE] rounded-xs space-y-4 shadow-xs">
+            <div class="w-16 h-16 rounded-xs bg-[#FDECDD] text-[#F0791E] flex items-center justify-center mx-auto border border-[#F0791E]/30">
+              <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
             </div>
-            <span class="text-xs text-[#4B5157]">Parcours chronologique</span>
+            <div class="space-y-1">
+              <h3 class="text-base font-bold text-[#1B1D1F]">Modules en cours de préparation</h3>
+              <p class="text-xs text-[#4B5157] max-w-md mx-auto leading-relaxed">
+                L'équipe pédagogique et les formateurs de votre établissement finalisent actuellement les supports et ressources de cette formation. Ils seront débloqués très prochainement.
+              </p>
+            </div>
+            <div class="pt-2">
+              <a
+                routerLink="/apprenant/formations"
+                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xs bg-[#1C75BC] hover:bg-[#124F80] text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+              >
+                <span>Retourner à mes formations</span>
+              </a>
+            </div>
           </div>
+        } @else {
+          <div class="space-y-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-bold text-[#1B1D1F] font-heading">
+                  Modules de la Formation ({{ data.modules.length }})
+                </h2>
+                <div class="barre"></div>
+              </div>
+              <span class="text-xs text-[#4B5157]">Parcours chronologique</span>
+            </div>
 
-          <div class="space-y-4">
+            <div class="space-y-4">
             @for (mod of data.modules; track mod.id; let modIdx = $index) {
               <div class="bg-white border border-[#D7DBDE] rounded-xs overflow-hidden transition-all shadow-xs">
                 <!-- Module Header -->
@@ -225,7 +288,7 @@ import { ToastService } from '../../../../core/services/toast.service';
                       } @else {
                         <div class="space-y-2">
                           @for (c of mod.cours; track c.id) {
-                            <div class="p-3.5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex items-center justify-between gap-4 hover:border-[#1C75BC] transition-all">
+                            <div class="p-3 sm:p-3.5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 hover:border-[#1C75BC] transition-all">
                               <div class="flex items-center gap-3 flex-1 min-w-0">
                                 <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0" [class]="c.complete ? 'bg-[#E7F1EA] text-[#276B44]' : 'bg-[#E7F1FA] text-[#1C75BC]'">
                                   @if (c.complete) {
@@ -238,9 +301,9 @@ import { ToastService } from '../../../../core/services/toast.service';
                                     </svg>
                                   }
                                 </div>
-                                <div class="truncate">
-                                  <p class="text-xs font-semibold text-[#1B1D1F] truncate">{{ c.titre }}</p>
-                                  <div class="flex items-center gap-2 text-[10px] text-[#4B5157] mt-0.5">
+                                <div class="min-w-0 flex-1">
+                                  <p class="text-xs font-semibold text-[#1B1D1F] break-words">{{ c.titre }}</p>
+                                  <div class="flex items-center gap-2 text-[10px] text-[#4B5157] mt-0.5 flex-wrap">
                                     @if (c.hasMedia) {
                                       <span class="px-1.5 py-0.2 rounded-xs bg-[#E7F1FA] text-[#1C75BC] font-semibold">Document / Média</span>
                                     }
@@ -253,7 +316,7 @@ import { ToastService } from '../../../../core/services/toast.service';
 
                               <button
                                 (click)="openCoursViewer(c.id)"
-                                class="px-3 py-1.5 rounded-xs bg-[#1C75BC] hover:bg-[#124F80] text-white text-xs font-bold transition-all flex-shrink-0 flex items-center gap-1 shadow-2xs"
+                                class="w-full sm:w-auto px-3.5 py-2 sm:py-1.5 rounded-xs bg-[#1C75BC] hover:bg-[#124F80] text-white text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-2xs cursor-pointer shrink-0"
                               >
                                 <span>{{ c.complete ? 'Revoir' : 'Lire le cours' }}</span>
                                 <span>→</span>
@@ -275,8 +338,8 @@ import { ToastService } from '../../../../core/services/toast.service';
                         </h4>
                         <div class="space-y-2">
                           @for (q of mod.quiz; track q.id) {
-                            <div class="p-3.5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex items-center justify-between gap-4">
-                              <div class="flex items-center gap-3">
+                            <div class="p-3 sm:p-3.5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                              <div class="flex items-center gap-3 flex-1 min-w-0">
                                 <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0" [class]="q.passe ? 'bg-[#E7F1EA] text-[#276B44]' : 'bg-[#E7F1FA] text-[#1C75BC]'">
                                   @if (q.passe) {
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -288,8 +351,8 @@ import { ToastService } from '../../../../core/services/toast.service';
                                     </svg>
                                   }
                                 </div>
-                                <div>
-                                  <p class="text-xs font-semibold text-[#1B1D1F]">{{ q.titre }}</p>
+                                <div class="min-w-0 flex-1">
+                                  <p class="text-xs font-semibold text-[#1B1D1F] break-words">{{ q.titre }}</p>
                                   <p class="text-[10px] text-[#4B5157]">
                                     @if (q.passe) {
                                       <span class="text-[#276B44] font-bold font-mono">Score obtenu : {{ q.score }}%</span>
@@ -302,7 +365,7 @@ import { ToastService } from '../../../../core/services/toast.service';
 
                               <a
                                 [routerLink]="['/apprenant/evaluations/quiz-player', q.id]"
-                                class="px-3 py-1.5 rounded-xs text-xs font-bold transition-all flex items-center gap-1"
+                                class="w-full sm:w-auto px-3.5 py-2 sm:py-1.5 rounded-xs text-xs font-bold transition-all flex items-center justify-center gap-1 shrink-0 text-center cursor-pointer"
                                 [class]="q.passe ? 'bg-[#F5F6F7] text-[#1B1D1F] border border-[#D7DBDE] hover:bg-[#D7DBDE]' : 'bg-[#1C75BC] text-white hover:bg-[#124F80] shadow-xs'"
                               >
                                 <span>{{ q.passe ? 'Voir résultat' : 'Passer le Quiz' }}</span>
@@ -325,8 +388,8 @@ import { ToastService } from '../../../../core/services/toast.service';
                         </h4>
                         <div class="space-y-2">
                           @for (d of mod.devoirs; track d.id) {
-                            <div class="p-3.5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex items-center justify-between gap-4">
-                              <div class="flex items-center gap-3">
+                            <div class="p-3 sm:p-3.5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                              <div class="flex items-center gap-3 flex-1 min-w-0">
                                 <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0" [class]="d.soumis ? 'bg-[#E7F1EA] text-[#276B44]' : 'bg-[#FDECDD] text-[#F0791E]'">
                                   @if (d.soumis) {
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -338,8 +401,8 @@ import { ToastService } from '../../../../core/services/toast.service';
                                     </svg>
                                   }
                                 </div>
-                                <div>
-                                  <p class="text-xs font-semibold text-[#1B1D1F]">{{ d.titre }}</p>
+                                <div class="min-w-0 flex-1">
+                                  <p class="text-xs font-semibold text-[#1B1D1F] break-words">{{ d.titre }}</p>
                                   <p class="text-[10px] text-[#4B5157]">
                                     @if (d.note !== null) {
                                       <span class="text-[#276B44] font-bold font-mono">Note : {{ d.note }}/20</span>
@@ -357,7 +420,7 @@ import { ToastService } from '../../../../core/services/toast.service';
                               <a
                                 routerLink="/apprenant/evaluations/depot-devoir"
                                 [queryParams]="{ devoirId: d.id }"
-                                class="px-3 py-1.5 rounded-xs bg-[#F0791E] hover:bg-[#d96612] text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1"
+                                class="w-full sm:w-auto px-3.5 py-2 sm:py-1.5 rounded-xs bg-[#F0791E] hover:bg-[#d96612] text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1 shrink-0 text-center cursor-pointer"
                               >
                                 <span>{{ d.soumis ? 'Voir soumission' : 'Déposer mon travail' }}</span>
                                 <span>→</span>
@@ -374,6 +437,7 @@ import { ToastService } from '../../../../core/services/toast.service';
           </div>
         </div>
       }
+    }
 
       <!-- MODAL / INTEGRATED COURS & MULTIMEDIA VIEWER -->
       @if (activeCours) {
@@ -530,7 +594,7 @@ import { ToastService } from '../../../../core/services/toast.service';
             </div>
 
             <!-- Modal Footer with Mark Progress -->
-            <div class="px-6 py-4 border-t border-[#D7DBDE] bg-[#F5F6F7] flex items-center justify-between shrink-0">
+            <div class="px-4 sm:px-6 py-3 sm:py-4 border-t border-[#D7DBDE] bg-[#F5F6F7] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
               <div>
                 @if (activeCours.complete) {
                   <span class="inline-flex items-center gap-1.5 text-xs font-bold text-[#276B44]">
@@ -542,10 +606,10 @@ import { ToastService } from '../../../../core/services/toast.service';
                 }
               </div>
 
-              <div class="flex items-center gap-3">
+              <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
                 <button
                   (click)="closeCoursViewer()"
-                  class="px-4 py-2 rounded-xs bg-white hover:bg-[#D7DBDE] border border-[#D7DBDE] text-[#1B1D1F] text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                  class="w-full sm:w-auto px-4 py-2 rounded-xs bg-white hover:bg-[#D7DBDE] border border-[#D7DBDE] text-[#1B1D1F] text-xs font-bold transition-all shadow-2xs cursor-pointer text-center"
                 >
                   Fermer
                 </button>
@@ -554,9 +618,9 @@ import { ToastService } from '../../../../core/services/toast.service';
                   <button
                     (click)="markAsRead(activeCours.id)"
                     [disabled]="marking"
-                    class="px-5 py-2 rounded-xs bg-[#276B44] hover:bg-[#1e5234] text-white text-xs font-bold shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                    class="w-full sm:w-auto px-5 py-2 rounded-xs bg-[#276B44] hover:bg-[#1e5234] text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer text-center"
                   >
-                    <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <svg class="w-4 h-4 text-white shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     <span>{{ marking ? 'Validation...' : 'Marquer comme lu et terminé' }}</span>
@@ -570,18 +634,20 @@ import { ToastService } from '../../../../core/services/toast.service';
     </div>
   `,
 })
-export class FormationDetailComponent implements OnInit {
+export class FormationDetailComponent implements OnInit, OnDestroy {
   formationId = '';
   data: FormationArborescence | null = null;
   eligibilite: EligibiliteCertificat | null = null;
   loading = true;
   expandedModules = new Set<string>();
+  private liveSub: Subscription | null = null;
 
   // Viewer state
   activeCours: CoursContenu | null = null;
   viewerTab: 'media' | 'contenu' = 'media';
   safeMediaUrl: SafeResourceUrl | null = null;
   marking = false;
+  downloadingCert = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -605,7 +671,17 @@ export class FormationDetailComponent implements OnInit {
       // 2. Revalidation en tâche de fond
       this.loadFormationTree(cached === null);
       this.loadEligibilite();
+
+      // 3. Abonnement réactif temps réel SSE
+      this.liveSub = this.apprenantService.liveUpdates$.subscribe(() => {
+        this.loadFormationTree(false);
+        this.loadEligibilite();
+      });
     }
+  }
+
+  ngOnDestroy() {
+    this.liveSub?.unsubscribe();
   }
 
   loadFormationTree(showSpinner = true) {
@@ -634,6 +710,43 @@ export class FormationDetailComponent implements OnInit {
         this.eligibilite = res;
       },
       error: () => {},
+    });
+  }
+
+  rechargerTout(isManual = false) {
+    this.loadFormationTree(isManual);
+    this.loadEligibilite();
+    if (isManual) {
+      this.toast.success('Détails de la formation actualisés avec succès.');
+    }
+  }
+
+  telechargerCertificat(certificatId: string, numeroSerie: string) {
+    if (this.downloadingCert) return;
+    this.downloadingCert = true;
+
+    this.apprenantService.telechargerCertificat(certificatId).subscribe({
+      next: (blob: Blob) => {
+        this.downloadingCert = false;
+        if (!blob || blob.size === 0) {
+          this.toast.error('Le document PDF est vide.');
+          return;
+        }
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `${numeroSerie}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(blobUrl);
+        this.toast.success(`Certificat ${numeroSerie} téléchargé avec succès.`);
+      },
+      error: (err) => {
+        this.downloadingCert = false;
+        console.error('Erreur téléchargement certificat:', err);
+        this.toast.error('Erreur lors du téléchargement du certificat.');
+      },
     });
   }
 

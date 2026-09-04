@@ -10,301 +10,349 @@ import { ToastService } from '../../../core/services/toast.service';
 @Component({
   selector: 'app-candidature',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, FormsModule],
   template: `
-    <main class="min-h-screen bg-[#F5F6F7] px-4 py-8 sm:px-8 font-sans">
-      <div class="mx-auto max-w-6xl">
-        <!-- En-tête -->
-        <div class="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between bg-white p-6 rounded border border-[#D7DBDE] shadow-xs">
-          <div>
-            <a routerLink="/apprenant/dashboard" class="inline-flex items-center gap-1 text-xs font-semibold text-[#1C75BC] hover:underline">
-              ← Retour à mon tableau de bord
-            </a>
-            <h1 class="mt-2 text-2xl font-bold text-[#1B1D1F] font-heading">Mes Candidatures & Suivi des Dossiers</h1>
-            <p class="mt-1 text-xs sm:text-sm text-[#4B5157]">
-              Consultez les sessions ouvertes, déposez vos pièces justificatives, et accédez aux explications officielles et décisions des dirigeants.
-            </p>
-          </div>
-          <div class="flex items-center gap-3 shrink-0">
-            <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 border border-emerald-200">
-              <span class="mr-1.5 inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Synchronisé en direct
-            </span>
-            <span class="text-xs font-bold text-[#4B5157] bg-gray-100 px-2.5 py-1 rounded">
-              {{ voeux.length }} vœu{{ voeux.length === 1 ? '' : 'x' }}
-            </span>
-          </div>
+    <div class="space-y-6 sm:space-y-8 animate-fade-in pb-12 min-w-0">
+      <!-- En-tête officiel avec charte graphique Vitalis Center -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold text-[#1B1D1F] font-heading">Mes Candidatures & Suivi des Dossiers</h1>
+          <div class="barre"></div>
+          <p class="mt-2 text-xs sm:text-sm text-[#4B5157]">
+            Consultez les sessions ouvertes, déposez vos pièces justificatives, et suivez en direct les décisions officielles des dirigeants.
+          </p>
         </div>
+        <div class="flex items-center gap-2.5 shrink-0 flex-wrap">
+          <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 border border-emerald-200 shadow-2xs">
+            <span class="mr-1.5 inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Synchronisé en direct
+          </span>
+          <span class="text-xs font-bold text-[#4B5157] bg-white border border-[#D7DBDE] px-3 py-1 rounded-xs shadow-2xs">
+            {{ voeux.length }} vœu{{ voeux.length === 1 ? '' : 'x' }}
+          </span>
+        </div>
+      </div>
 
-        <!-- Alertes erreurs -->
-        <div *ngIf="error" class="mb-6 rounded border border-[#C94C4C] bg-white p-4 text-xs sm:text-sm text-[#9E3030] shadow-sm flex items-center justify-between">
+      <!-- Alertes erreurs -->
+      @if (error) {
+        <div class="rounded-xs border border-[#C94C4C] bg-white p-4 text-xs sm:text-sm text-[#9E3030] shadow-sm flex items-center justify-between">
           <span>{{ error }}</span>
-          <button (click)="error = ''" class="text-xs text-gray-400 hover:text-gray-700 font-bold">✕</button>
+          <button (click)="error = ''" class="text-xs text-gray-400 hover:text-gray-700 font-bold cursor-pointer p-1">✕</button>
         </div>
+      }
 
-        <section class="grid gap-8 lg:grid-cols-[1.15fr_1.35fr]">
-          <!-- Colonne gauche : Sessions ouvertes -->
-          <div>
-            <div class="mb-3 flex items-center justify-between">
-              <h2 class="text-base font-bold text-[#1B1D1F]">Sessions de formation disponibles</h2>
-              <div class="flex items-center gap-2">
-                <span *ngIf="syncing" class="inline-flex items-center gap-1 text-xs text-[#1C75BC]">
+      <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+        <!-- Colonne gauche : Sessions ouvertes (5 cols) -->
+        <div class="lg:col-span-5 space-y-3 sm:space-y-4">
+          <div class="flex items-center justify-between pb-1 border-b border-[#D7DBDE]">
+            <h2 class="text-sm font-bold text-[#1B1D1F] uppercase tracking-wider">Sessions disponibles</h2>
+            <div class="flex items-center gap-2">
+              @if (syncing) {
+                <span class="inline-flex items-center gap-1 text-[11px] text-[#1C75BC]">
                   <span class="inline-block h-2.5 w-2.5 animate-spin rounded-full border border-[#1C75BC] border-t-transparent"></span>
                   Actualisation...
                 </span>
-                <span class="text-xs text-[#4B5157]">{{ sessions.length }} session{{ sessions.length === 1 ? '' : 's' }}</span>
-              </div>
+              }
+              <span class="text-xs text-[#4B5157] font-mono">{{ sessions.length }}</span>
             </div>
+          </div>
 
-            <!-- Chargement initial -->
-            <div *ngIf="loading && sessions.length === 0" class="space-y-3">
-              <div *ngFor="let item of [1,2]" class="rounded border border-[#D7DBDE] bg-white p-5 shadow-sm animate-pulse">
+          <!-- Chargement initial -->
+          @if (loading && sessions.length === 0) {
+            <div class="space-y-3">
+              <div *ngFor="let item of [1,2]" class="rounded-xs border border-[#D7DBDE] bg-white p-5 shadow-2xs animate-pulse">
                 <div class="h-4 w-1/3 bg-gray-200 rounded mb-2"></div>
                 <div class="h-3 w-1/2 bg-gray-200 rounded mb-2"></div>
                 <div class="h-3 w-1/4 bg-gray-100 rounded"></div>
               </div>
             </div>
+          }
 
-            <!-- Aucune session disponible -->
-            <div *ngIf="!loading && sessions.length === 0" class="rounded border border-[#D7DBDE] bg-white p-8 text-center text-sm text-[#4B5157] shadow-sm">
+          <!-- Aucune session disponible -->
+          @if (!loading && sessions.length === 0) {
+            <div class="rounded-xs border border-[#D7DBDE] bg-white p-8 text-center text-xs sm:text-sm text-[#4B5157] shadow-2xs">
               <p class="font-medium">Aucune session d'admission n'est actuellement ouverte.</p>
               <p class="mt-1 text-xs text-[#71787E]">Les prochaines campagnes d'admission seront affichées dès leur ouverture.</p>
             </div>
+          }
 
-            <!-- Liste des sessions -->
-            <div *ngIf="sessions.length > 0" class="space-y-3">
-              <article *ngFor="let session of sessions" class="rounded border border-[#D7DBDE] bg-white p-5 shadow-sm transition hover:shadow-md">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <!-- Liste des sessions -->
+          @if (sessions.length > 0) {
+            <div class="space-y-3">
+              @for (session of sessions; track session.id) {
+                <article class="rounded-xs border border-[#D7DBDE] bg-white p-4 sm:p-5 shadow-2xs hover:border-[#1C75BC] transition-all flex flex-col justify-between gap-3">
                   <div>
-                    <h3 class="font-bold text-[#1B1D1F] text-sm">{{ session.libelle }}</h3>
-                    <p class="mt-1 text-xs sm:text-sm text-[#4B5157]">
+                    <h3 class="font-bold text-[#1B1D1F] text-xs sm:text-sm leading-snug">{{ session.libelle }}</h3>
+                    <p class="mt-1 text-xs text-[#4B5157]">
                       <span class="font-semibold text-[#1C75BC]">{{ session.filiere.libelle }}</span> · {{ session.niveau.libelle }}
                     </p>
-                    <p class="mt-1 text-xs text-[#71787E]">
+                    <p class="mt-1 text-[11px] text-[#71787E]">
                       Établissement : {{ session.etablissement.nom }} ({{ session.etablissement.codeAntenne }})
                     </p>
-                    <p class="mt-0.5 text-xs text-[#71787E]">
+                    <p class="mt-0.5 text-[11px] text-[#71787E]">
                       Clôture le {{ session.dateFermeture | date:'dd/MM/yyyy' }} · Capacité : {{ session.capacite }} places
                     </p>
                   </div>
-                  <button type="button" class="btn btn-primary text-xs shrink-0 py-2 px-3.5 bg-[#1C75BC] text-white font-semibold cursor-pointer"
-                          [disabled]="isApplied(session.id) || submitting === session.id"
-                          (click)="apply(session)">
-                    {{ isApplied(session.id) ? '✓ Vœu déposé' : (submitting === session.id ? 'Ajout...' : '+ Déposer un vœu') }}
-                  </button>
-                </div>
-              </article>
+                  <div class="pt-2 border-t border-[#D7DBDE] flex justify-end">
+                    <button type="button" class="w-full sm:w-auto text-xs py-2 px-3.5 bg-[#1C75BC] hover:bg-[#124F80] disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold rounded-xs shadow-2xs transition-all cursor-pointer text-center"
+                            [disabled]="isApplied(session.id) || submitting === session.id"
+                            (click)="apply(session)">
+                      {{ isApplied(session.id) ? '✓ Vœu déjà déposé' : (submitting === session.id ? 'Ajout...' : '+ Déposer un vœu') }}
+                    </button>
+                  </div>
+                </article>
+              }
             </div>
+          }
+        </div>
+
+        <!-- Colonne droite : Suivi des vœux, explications et pièces (7 cols) -->
+        <div class="lg:col-span-7 space-y-3 sm:space-y-4">
+          <div class="flex items-center justify-between pb-1 border-b border-[#D7DBDE]">
+            <h2 class="text-sm font-bold text-[#1B1D1F] uppercase tracking-wider">Mes Vœux & Décisions</h2>
+            <button (click)="loadVoeux(true)" class="text-xs font-semibold text-[#1C75BC] hover:underline cursor-pointer flex items-center gap-1" [disabled]="refreshing">
+              <span>{{ refreshing ? 'Actualisation...' : '🔄 Actualiser' }}</span>
+            </button>
           </div>
 
-          <!-- Colonne droite : Suivi des vœux, explications et pièces -->
-          <div>
-            <div class="mb-3 flex items-center justify-between">
-              <h2 class="text-base font-bold text-[#1B1D1F]">Mes Vœux & Décisions des Dirigeants</h2>
-              <button (click)="loadVoeux(true)" class="text-xs text-[#1C75BC] hover:underline cursor-pointer" [disabled]="refreshing">
-                {{ refreshing ? 'Actualisation...' : '🔄 Actualiser' }}
-              </button>
+          <!-- Aucun vœu -->
+          @if (voeux.length === 0) {
+            <div class="rounded-xs border border-[#D7DBDE] bg-white p-8 sm:p-12 text-center text-xs sm:text-sm text-[#4B5157] shadow-2xs space-y-2">
+              <svg class="w-12 h-12 text-[#9AA1A8] mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p class="font-bold text-[#1B1D1F]">Vous n'avez pas encore de vœu d'admission déposé.</p>
+              <p class="text-xs text-[#71787E] max-w-sm mx-auto">Sélectionnez une session disponible dans la colonne de gauche pour démarrer votre dossier.</p>
             </div>
+          }
 
-            <!-- Aucun vœu -->
-            <div *ngIf="voeux.length === 0" class="rounded border border-[#D7DBDE] bg-white p-8 text-center text-sm text-[#4B5157] shadow-sm">
-              <p class="font-medium">Vous n'avez pas encore de vœu d'admission déposé.</p>
-              <p class="mt-1 text-xs text-[#71787E]">Sélectionnez une session ouverte à gauche pour commencer votre dossier d'adhésion.</p>
-            </div>
-
-            <!-- Liste des vœux -->
-            <div *ngIf="voeux.length > 0" class="space-y-4">
-              <article *ngFor="let voeu of voeux" class="rounded-lg border border-[#D7DBDE] bg-white p-5 shadow-sm space-y-3">
-                <!-- Titre & Statut -->
-                <div class="flex items-start justify-between gap-2 border-b border-gray-100 pb-3">
-                  <div>
-                    <h3 class="text-sm font-bold text-[#1B1D1F]">{{ voeu.session.libelle }}</h3>
-                    <div class="text-xs text-[#71787E]">{{ voeu.session.filiere.libelle }} · {{ voeu.session.niveau.libelle }} · {{ voeu.session.etablissement.nom }}</div>
-                  </div>
-                  <span class="rounded px-2.5 py-1 text-xs font-bold shrink-0"
-                        [ngClass]="{
-                          'bg-amber-100 text-amber-800': voeu.statut === 'BROUILLON',
-                          'bg-blue-100 text-blue-800': voeu.statut === 'SOUMISE' || voeu.statut === 'EN_EVALUATION',
-                          'bg-emerald-100 text-emerald-800': voeu.statut === 'ADMISE' || voeu.statut === 'CONFIRMEE' || voeu.statut === 'INSCRITE',
-                          'bg-purple-100 text-purple-800': voeu.statut === 'LISTE_ATTENTE',
-                          'bg-rose-100 text-rose-800': voeu.statut === 'REJETEE' || voeu.statut === 'EXPIREE',
-                          'bg-gray-100 text-gray-800': voeu.statut === 'RETIREE'
-                        }">
-                    {{ voeu.statut }}
-                  </span>
-                </div>
-
-                <!-- ========================================================================= -->
-                <!-- SECTION DROIT AUX EXPLICATIONS & AVIS OFFICIEL DES DIRIGEANTS              -->
-                <!-- ========================================================================= -->
-                <div *ngIf="voeu.commentaireGestionnaire || voeu.scoreEvaluation || voeu.dateDecision || voeu.motifRejet || voeu.statut === 'ADMISE' || voeu.statut === 'LISTE_ATTENTE' || voeu.statut === 'REJETEE'"
-                     class="p-4 rounded-lg border text-xs"
-                     [ngClass]="{
-                       'bg-emerald-50/90 border-emerald-300 text-emerald-950': voeu.statut === 'ADMISE' || voeu.statut === 'CONFIRMEE' || voeu.statut === 'INSCRITE',
-                       'bg-purple-50/90 border-purple-300 text-purple-950': voeu.statut === 'LISTE_ATTENTE',
-                       'bg-rose-50/90 border-rose-300 text-rose-950': voeu.statut === 'REJETEE',
-                       'bg-blue-50/90 border-blue-300 text-blue-950': voeu.statut === 'EN_EVALUATION' || voeu.statut === 'SOUMISE'
-                     }">
-                  
-                  <div class="flex items-center justify-between font-bold mb-2">
-                    <span class="flex items-center gap-1.5 text-xs">
-                      <span>🏛️</span>
-                      <span>Avis & Explications Officielles des Dirigeants</span>
-                    </span>
-                    <span *ngIf="voeu.scoreEvaluation" class="px-2 py-0.5 rounded bg-white font-bold text-xs shadow-2xs border border-gray-300 text-gray-800">
-                      Note attribuée : {{ voeu.scoreEvaluation }}/20
-                    </span>
-                  </div>
-
-                  <!-- Commentaires & explications -->
-                  <div *ngIf="voeu.commentaireGestionnaire" class="p-3 bg-white rounded border border-gray-200/80 shadow-2xs leading-relaxed">
-                    <span class="font-bold block text-[11px] text-gray-500 uppercase tracking-wider mb-1">
-                      Retour & Évaluation de la Direction :
-                    </span>
-                    <p class="text-gray-900 font-medium text-xs whitespace-pre-line italic">
-                      « {{ voeu.commentaireGestionnaire }} »
-                    </p>
-                  </div>
-
-                  <!-- Motif de rejet si applicable -->
-                  <div *ngIf="voeu.motifRejet" class="mt-2 p-2 bg-white/90 rounded border border-rose-200 text-rose-900 font-semibold">
-                    ❌ <strong>Motif de la décision :</strong> {{ voeu.motifRejet }}
-                  </div>
-
-                  <!-- Message de félicitations pour admis -->
-                  <div *ngIf="voeu.statut === 'ADMISE'" class="mt-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2.5 bg-emerald-100/90 rounded border border-emerald-300 text-emerald-900">
-                    <div>
-                      <strong>🎉 Candidature retenue !</strong> Félicitations, vous êtes admis à cette formation.
+          <!-- Liste des vœux -->
+          @if (voeux.length > 0) {
+            <div class="space-y-4">
+              @for (voeu of voeux; track voeu.id) {
+                <article class="rounded-xs border border-[#D7DBDE] bg-white p-4 sm:p-6 shadow-xs space-y-4 hover:border-[#1C75BC] transition-all">
+                  <!-- Titre & Statut -->
+                  <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-2 border-b border-[#D7DBDE] pb-3">
+                    <div class="min-w-0 flex-1">
+                      <h3 class="text-sm sm:text-base font-bold text-[#1B1D1F] leading-snug">{{ voeu.session.libelle }}</h3>
+                      <div class="text-xs text-[#71787E] mt-0.5">{{ voeu.session.filiere.libelle }} · {{ voeu.session.niveau.libelle }} · {{ voeu.session.etablissement.nom }}</div>
                     </div>
-                    <span *ngIf="voeu.dateExpiration" class="text-xs font-bold text-emerald-950 bg-white px-2 py-1 rounded shadow-2xs">
-                      Confirmation avant le : {{ voeu.dateExpiration | date:'dd/MM/yyyy' }}
+                    <span class="rounded-xs px-2.5 py-1 text-xs font-bold shrink-0 self-start border"
+                          [ngClass]="{
+                            'bg-amber-100 text-amber-800 border-amber-300': voeu.statut === 'BROUILLON',
+                            'bg-blue-100 text-blue-800 border-blue-300': voeu.statut === 'SOUMISE' || voeu.statut === 'EN_EVALUATION',
+                            'bg-emerald-100 text-emerald-800 border-emerald-300': voeu.statut === 'ADMISE' || voeu.statut === 'CONFIRMEE' || voeu.statut === 'INSCRITE',
+                            'bg-purple-100 text-purple-800 border-purple-300': voeu.statut === 'LISTE_ATTENTE',
+                            'bg-rose-100 text-rose-800 border-rose-300': voeu.statut === 'REJETEE' || voeu.statut === 'EXPIREE',
+                            'bg-gray-100 text-gray-800 border-gray-300': voeu.statut === 'RETIREE'
+                          }">
+                      {{ voeu.statut }}
                     </span>
                   </div>
 
-                  <!-- Message de liste d'attente -->
-                  <div *ngIf="voeu.statut === 'LISTE_ATTENTE'" class="mt-2 p-2 bg-purple-100 rounded border border-purple-300 text-purple-900 font-medium">
-                    ⏳ Vous êtes positionné au <strong>rang #{{ voeu.rangListeAttente }}</strong> de la liste d'attente. Votre dossier sera automatiquement promu en cas de libération d'une place.
-                  </div>
-
-                  <!-- Date de formalisation de la décision -->
-                  <div *ngIf="voeu.dateDecision" class="mt-2 text-[10px] text-gray-500 font-medium">
-                    Décision de la direction enregistrée le {{ voeu.dateDecision | date:'dd/MM/yyyy à HH:mm' }}
-                  </div>
-                </div>
-
-                <!-- Alertes supplémentaires -->
-                <div *ngIf="voeu.conflitCalendrier" class="text-xs font-medium text-amber-700 bg-amber-50 rounded p-2.5 border border-amber-200">
-                  ⚠️ Inscription active en parallèle : votre dossier est géré en régime de mise en réserve.
-                </div>
-
-                <!-- SECTION PIECES DU DOSSIER -->
-                <div class="rounded-lg bg-gray-50 p-3.5 border border-gray-200 space-y-2.5">
-                  <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold text-[#1B1D1F] flex items-center gap-1.5">
-                      📁 Documents & Pièces Justificatives
-                    </span>
-                    <span class="text-[11px] font-semibold"
-                          [ngClass]="(voeu.pieces?.length || 0) > 0 ? 'text-emerald-700' : 'text-amber-700'">
-                      {{ (voeu.pieces?.length || 0) > 0 ? '✓ ' + voeu.pieces?.length + ' pièce(s) jointe(s)' : '⚠️ 0 pièce jointe (Requis)' }}
-                    </span>
-                  </div>
-
-                  <!-- Formulaire d'ajout de pièce si statut BROUILLON -->
-                  <div *ngIf="voeu.statut === 'BROUILLON'" class="p-3 bg-white rounded border border-gray-200 text-xs space-y-2">
-                    <div class="font-medium text-[#1B1D1F]">Ajouter une pièce justificative :</div>
-                    <div class="flex flex-wrap items-center gap-2">
-                      <select [(ngModel)]="selectedPieceTypes[voeu.id]" class="rounded border border-gray-300 px-2.5 py-1.5 text-xs bg-white text-[#1B1D1F]">
-                        <option value="PIECE_IDENTITE">🪪 Pièce d'identité (CNI / Passeport)</option>
-                        <option value="DIPLOME">🎓 Diplôme ou Attestation</option>
-                        <option value="RELEVE_NOTES">📊 Relevé de notes</option>
-                        <option value="CV">📄 Curriculum Vitae (CV)</option>
-                        <option value="LETTRE_MOTIVATION">✉️ Lettre de motivation</option>
-                        <option value="AUTRE">📎 Autre justificatif</option>
-                      </select>
-
-                      <label class="inline-flex items-center gap-1 cursor-pointer rounded bg-[#1C75BC] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#165c94] transition shadow-xs">
-                        <span>📤 Choisir un fichier (PDF, JPG, PNG)</span>
-                        <input type="file" class="hidden" (change)="upload(voeu, $event)" accept=".pdf,.jpg,.jpeg,.png" [disabled]="busy === voeu.id" />
-                      </label>
-                    </div>
-                  </div>
-
-                  <!-- Liste des pièces téléversées -->
-                  <div *ngIf="voeu.pieces && voeu.pieces.length > 0" class="space-y-1.5">
-                    <div *ngFor="let piece of voeu.pieces" class="flex items-center justify-between bg-white px-3 py-2 rounded border border-gray-200 text-xs">
-                      <div class="flex items-center gap-2 overflow-hidden">
-                        <span class="text-sm">📄</span>
-                        <span class="font-medium text-[#1B1D1F] truncate text-xs">{{ piece.nomFichier }}</span>
-                        <span class="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-700 font-semibold shrink-0 border border-blue-100">
-                          {{ formatPieceType(piece.type) }}
+                  <!-- ========================================================================= -->
+                  <!-- SECTION DROIT AUX EXPLICATIONS & AVIS OFFICIEL DES DIRIGEANTS              -->
+                  <!-- ========================================================================= -->
+                  @if (voeu.commentaireGestionnaire || voeu.scoreEvaluation || voeu.dateDecision || voeu.motifRejet || voeu.statut === 'ADMISE' || voeu.statut === 'LISTE_ATTENTE' || voeu.statut === 'REJETEE') {
+                    <div class="p-3.5 sm:p-4 rounded-xs border text-xs space-y-2.5"
+                         [ngClass]="{
+                           'bg-emerald-50/90 border-emerald-300 text-emerald-950': voeu.statut === 'ADMISE' || voeu.statut === 'CONFIRMEE' || voeu.statut === 'INSCRITE',
+                           'bg-purple-50/90 border-purple-300 text-purple-950': voeu.statut === 'LISTE_ATTENTE',
+                           'bg-rose-50/90 border-rose-300 text-rose-950': voeu.statut === 'REJETEE',
+                           'bg-blue-50/90 border-blue-300 text-blue-950': voeu.statut === 'EN_EVALUATION' || voeu.statut === 'SOUMISE'
+                         }">
+                      
+                      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-bold">
+                        <span class="flex items-center gap-1.5 text-xs">
+                          <span>🏛️</span>
+                          <span>Avis & Explications Officielles des Dirigeants</span>
                         </span>
+                        @if (voeu.scoreEvaluation) {
+                          <span class="px-2 py-0.5 rounded bg-white font-bold text-xs shadow-2xs border border-gray-300 text-gray-800 self-start sm:self-auto font-mono">
+                            Note : {{ voeu.scoreEvaluation }}/20
+                          </span>
+                        }
                       </div>
 
-                      <div class="flex items-center gap-1.5 shrink-0 ml-2">
-                        <button type="button" *ngIf="piece.fileUrl" (click)="viewPiece(piece)"
-                                class="text-[#1C75BC] hover:underline font-semibold text-xs px-2 py-1 bg-blue-50/80 rounded border border-blue-200 cursor-pointer">
-                          👁️ Voir
-                        </button>
-                        <button type="button" *ngIf="piece.fileUrl" (click)="downloadPiece(piece)"
-                                [disabled]="downloadingPieceId === (piece.id || piece.nomFichier)"
-                                class="text-gray-700 hover:bg-gray-100 font-semibold text-xs px-2 py-1 bg-gray-50 rounded border border-gray-200 cursor-pointer">
-                          {{ downloadingPieceId === (piece.id || piece.nomFichier) ? '⏳ ...' : '⬇️ Télécharger' }}
-                        </button>
-                        <button *ngIf="voeu.statut === 'BROUILLON'"
-                                type="button"
-                                class="text-rose-600 hover:text-rose-800 text-xs font-medium px-1.5 py-1 cursor-pointer"
-                                [disabled]="busy === voeu.id"
-                                (click)="deletePiece(voeu, piece.id)">
-                          🗑️
-                        </button>
-                      </div>
+                      <!-- Commentaires & explications -->
+                      @if (voeu.commentaireGestionnaire) {
+                        <div class="p-3 bg-white rounded-xs border border-gray-200/80 shadow-2xs leading-relaxed">
+                          <span class="font-bold block text-[11px] text-gray-500 uppercase tracking-wider mb-1">
+                            Retour & Évaluation de la Direction :
+                          </span>
+                          <p class="text-gray-900 font-medium text-xs whitespace-pre-line italic">
+                            « {{ voeu.commentaireGestionnaire }} »
+                          </p>
+                        </div>
+                      }
+
+                      <!-- Motif de rejet si applicable -->
+                      @if (voeu.motifRejet) {
+                        <div class="p-2.5 bg-white/90 rounded-xs border border-rose-200 text-rose-900 font-semibold">
+                          ❌ <strong>Motif de la décision :</strong> {{ voeu.motifRejet }}
+                        </div>
+                      }
+
+                      <!-- Message de félicitations pour admis -->
+                      @if (voeu.statut === 'ADMISE') {
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2.5 bg-emerald-100/90 rounded-xs border border-emerald-300 text-emerald-900">
+                          <div>
+                            <strong>🎉 Candidature retenue !</strong> Félicitations, vous êtes admis à cette formation.
+                          </div>
+                          @if (voeu.dateExpiration) {
+                            <span class="text-xs font-bold text-emerald-950 bg-white px-2 py-1 rounded-xs shadow-2xs whitespace-nowrap">
+                              Confirmation avant le : {{ voeu.dateExpiration | date:'dd/MM/yyyy' }}
+                            </span>
+                          }
+                        </div>
+                      }
+
+                      <!-- Message de liste d'attente -->
+                      @if (voeu.statut === 'LISTE_ATTENTE') {
+                        <div class="p-2.5 bg-purple-100 rounded-xs border border-purple-300 text-purple-900 font-medium">
+                          ⏳ Vous êtes positionné au <strong>rang #{{ voeu.rangListeAttente }}</strong> de la liste d'attente. Votre dossier sera automatiquement promu en cas de libération d'une place.
+                        </div>
+                      }
+
+                      <!-- Date de formalisation de la décision -->
+                      @if (voeu.dateDecision) {
+                        <div class="text-[10px] text-gray-500 font-medium font-mono">
+                          Décision enregistrée le {{ voeu.dateDecision | date:'dd/MM/yyyy à HH:mm' }}
+                        </div>
+                      }
                     </div>
+                  }
+
+                  <!-- Alertes supplémentaires -->
+                  @if (voeu.conflitCalendrier) {
+                    <div class="text-xs font-medium text-amber-700 bg-amber-50 rounded-xs p-2.5 border border-amber-200">
+                      ⚠️ Inscription active en parallèle : votre dossier est géré en régime de mise en réserve.
+                    </div>
+                  }
+
+                  <!-- SECTION PIECES DU DOSSIER -->
+                  <div class="rounded-xs bg-[#F5F6F7] p-3.5 sm:p-4 border border-[#D7DBDE] space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                      <span class="text-xs font-bold text-[#1B1D1F] flex items-center gap-1.5">
+                        📁 Documents & Pièces Justificatives
+                      </span>
+                      <span class="text-[11px] font-semibold"
+                            [ngClass]="(voeu.pieces?.length || 0) > 0 ? 'text-emerald-700' : 'text-amber-700'">
+                        {{ (voeu.pieces?.length || 0) > 0 ? '✓ ' + voeu.pieces?.length + ' pièce(s) jointe(s)' : '⚠️ 0 pièce jointe (Requis)' }}
+                      </span>
+                    </div>
+
+                    <!-- Formulaire d'ajout de pièce si statut BROUILLON -->
+                    @if (voeu.statut === 'BROUILLON') {
+                      <div class="p-3 bg-white rounded-xs border border-[#D7DBDE] text-xs space-y-2.5 shadow-2xs">
+                        <div class="font-bold text-[#1B1D1F]">Ajouter une pièce justificative :</div>
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                          <select [(ngModel)]="selectedPieceTypes[voeu.id]" class="w-full sm:flex-1 rounded-xs border border-[#D7DBDE] px-2.5 py-1.5 text-xs bg-white text-[#1B1D1F] focus:border-[#1C75BC] focus:outline-none">
+                            <option value="PIECE_IDENTITE">🪪 Pièce d'identité (CNI / Passeport)</option>
+                            <option value="DIPLOME">🎓 Diplôme ou Attestation</option>
+                            <option value="RELEVE_NOTES">📊 Relevé de notes</option>
+                            <option value="CV">📄 Curriculum Vitae (CV)</option>
+                            <option value="LETTRE_MOTIVATION">✉️ Lettre de motivation</option>
+                            <option value="AUTRE">📎 Autre justificatif</option>
+                          </select>
+
+                          <label class="w-full sm:w-auto inline-flex items-center justify-center gap-1 cursor-pointer rounded-xs bg-[#1C75BC] hover:bg-[#124F80] px-3.5 py-1.5 text-xs font-bold text-white transition-all shadow-xs text-center">
+                            <span>📤 Parcourir (PDF, JPG, PNG)</span>
+                            <input type="file" class="hidden" (change)="upload(voeu, $event)" accept=".pdf,.jpg,.jpeg,.png" [disabled]="busy === voeu.id" />
+                          </label>
+                        </div>
+                      </div>
+                    }
+
+                    <!-- Liste des pièces téléversées -->
+                    @if (voeu.pieces && voeu.pieces.length > 0) {
+                      <div class="space-y-2">
+                        @for (piece of voeu.pieces; track piece.id || piece.nomFichier) {
+                          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white px-3 py-2 rounded-xs border border-[#D7DBDE] text-xs shadow-2xs">
+                            <div class="flex items-center gap-2 overflow-hidden min-w-0">
+                              <span class="text-sm shrink-0">📄</span>
+                              <span class="font-semibold text-[#1B1D1F] truncate text-xs">{{ piece.nomFichier }}</span>
+                              <span class="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-700 font-semibold shrink-0 border border-blue-100">
+                                {{ formatPieceType(piece.type) }}
+                              </span>
+                            </div>
+
+                            <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                              @if (piece.fileUrl) {
+                                <button type="button" (click)="viewPiece(piece)"
+                                        class="text-[#1C75BC] hover:bg-blue-50 font-semibold text-xs px-2.5 py-1 rounded-xs border border-blue-200 cursor-pointer transition-all">
+                                  👁️ Voir
+                                </button>
+                                <button type="button" (click)="downloadPiece(piece)"
+                                        [disabled]="downloadingPieceId === (piece.id || piece.nomFichier)"
+                                        class="text-gray-700 hover:bg-gray-100 font-semibold text-xs px-2.5 py-1 bg-gray-50 rounded-xs border border-[#D7DBDE] cursor-pointer transition-all">
+                                  {{ downloadingPieceId === (piece.id || piece.nomFichier) ? '⏳ ...' : '⬇️ Télécharger' }}
+                                </button>
+                              }
+                              @if (voeu.statut === 'BROUILLON') {
+                                <button type="button"
+                                        class="text-rose-600 hover:bg-rose-50 text-xs font-medium px-2 py-1 rounded-xs border border-rose-200 cursor-pointer transition-all"
+                                        [disabled]="busy === voeu.id"
+                                        (click)="deletePiece(voeu, piece.id)">
+                                  🗑️
+                                </button>
+                              }
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    }
+
+                    <!-- Message si aucune pièce -->
+                    @if (!voeu.pieces || voeu.pieces.length === 0) {
+                      <div class="text-center py-2 text-xs text-[#71787E]">
+                        Aucune pièce justificative déposée. Joignez vos documents requis avant de soumettre.
+                      </div>
+                    }
                   </div>
 
-                  <!-- Message si aucune pièce -->
-                  <div *ngIf="!voeu.pieces || voeu.pieces.length === 0" class="text-center py-2 text-xs text-[#71787E]">
-                    Aucune pièce justificative déposée. Joignez vos documents requis avant de soumettre.
+                  <!-- ACTIONS DU VOEU -->
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-[#D7DBDE] pt-3.5">
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <!-- Bouton Soumettre : Débloqué uniquement si pièces présentes -->
+                      @if (voeu.statut === 'BROUILLON') {
+                        <button type="button"
+                                class="w-full sm:w-auto text-xs font-bold px-4 py-2.5 rounded-xs transition-all shadow-xs cursor-pointer text-center"
+                                [ngClass]="(voeu.pieces?.length || 0) > 0 ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
+                                [disabled]="busy === voeu.id || !voeu.pieces || voeu.pieces.length === 0"
+                                (click)="submit(voeu)">
+                          {{ busy === voeu.id ? 'Soumission...' : ((voeu.pieces?.length || 0) > 0 ? '🚀 Soumettre mon dossier complet' : '🔒 Joindre une pièce pour soumettre') }}
+                        </button>
+                      }
+
+                      <!-- Bouton Confirmer si ADMISE -->
+                      @if (voeu.statut === 'ADMISE') {
+                        <button type="button"
+                                class="w-full sm:w-auto text-xs font-bold py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xs shadow-xs cursor-pointer text-center"
+                                [disabled]="busy === voeu.id"
+                                (click)="confirm(voeu)">
+                          {{ busy === voeu.id ? 'Confirmation...' : '✅ Confirmer ma place définitive' }}
+                        </button>
+                      }
+                    </div>
+
+                    <!-- Bouton Retirer -->
+                    @if (['BROUILLON','SOUMISE','EN_EVALUATION','ADMISE','LISTE_ATTENTE'].includes(voeu.statut)) {
+                      <button type="button"
+                              class="w-full sm:w-auto text-xs font-semibold text-[#9E3030] hover:bg-rose-50 py-2 px-3 rounded-xs border border-transparent hover:border-rose-200 cursor-pointer text-center"
+                              [disabled]="busy === voeu.id"
+                              (click)="withdraw(voeu)">
+                        Retirer ce vœu
+                      </button>
+                    }
                   </div>
-                </div>
-
-                <!-- ACTIONS DU VOEU -->
-                <div class="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <!-- Bouton Soumettre : Débloqué uniquement si pièces présentes -->
-                    <button *ngIf="voeu.statut === 'BROUILLON'"
-                            type="button"
-                            class="text-xs font-semibold px-4 py-2 rounded transition shadow-sm cursor-pointer"
-                            [ngClass]="(voeu.pieces?.length || 0) > 0 ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
-                            [disabled]="busy === voeu.id || !voeu.pieces || voeu.pieces.length === 0"
-                            (click)="submit(voeu)">
-                      {{ busy === voeu.id ? 'Soumission...' : ((voeu.pieces?.length || 0) > 0 ? '🚀 Soumettre mon dossier complet' : '🔒 Joindre une pièce pour soumettre') }}
-                    </button>
-
-                    <!-- Bouton Confirmer si ADMISE -->
-                    <button *ngIf="voeu.statut === 'ADMISE'"
-                            type="button"
-                            class="btn btn-primary text-xs font-bold py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer"
-                            [disabled]="busy === voeu.id"
-                            (click)="confirm(voeu)">
-                      {{ busy === voeu.id ? 'Confirmation...' : '✅ Confirmer ma place définitive' }}
-                    </button>
-                  </div>
-
-                  <!-- Bouton Retirer -->
-                  <button *ngIf="['BROUILLON','SOUMISE','EN_EVALUATION','ADMISE','LISTE_ATTENTE'].includes(voeu.statut)"
-                          type="button"
-                          class="btn btn-ghost text-xs text-[#9E3030] hover:bg-rose-50 cursor-pointer"
-                          [disabled]="busy === voeu.id"
-                          (click)="withdraw(voeu)">
-                    Retirer ce vœu
-                  </button>
-                </div>
-              </article>
+                </article>
+              }
             </div>
-          </div>
-        </section>
-      </div>
-    </main>
+          }
+        </div>
+      </section>
+    </div>
   `,
 })
 export class CandidatureComponent implements OnInit, OnDestroy {

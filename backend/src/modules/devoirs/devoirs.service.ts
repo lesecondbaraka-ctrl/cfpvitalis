@@ -2,10 +2,15 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services/storage.service';
 import { Role } from '../../common/enums/role.enum';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class DevoirsService {
-  constructor(private prisma: PrismaService, private storage: StorageService) {}
+  constructor(
+    private prisma: PrismaService,
+    private storage: StorageService,
+    private notifications: NotificationsService,
+  ) {}
 
   private async assertModuleAccess(moduleId: string, user: any) {
     const mod = await this.prisma.module.findUnique({
@@ -80,11 +85,22 @@ export class DevoirsService {
   }
 
   async noter(devoirId: string, apprenantId: string, note: number, commentaire: string, user: any) {
-    await this.findOne(devoirId, user);
-    return this.prisma.soumissionDevoir.update({
+    const devoir = await this.findOne(devoirId, user);
+    const soumission = await this.prisma.soumissionDevoir.update({
       where: { devoirId_apprenantId: { devoirId, apprenantId } },
       data: { note, commentaire },
     });
+
+    // ─── Push temps réel : notifier l'apprenant que son devoir a été noté ───
+    this.notifications.emit({
+      type: 'DEVOIR_NOTE',
+      recipientUserId: apprenantId,
+      title: 'Devoir noté !',
+      message: `Votre devoir « ${devoir.titre} » a été noté : ${note}/20.${commentaire ? ' ' + commentaire : ''}`,
+      data: { devoirId, devoirTitre: devoir.titre, note, commentaire, soumissionId: soumission.id },
+    });
+
+    return soumission;
   }
 
   async mesSoumissions(userId: string) {

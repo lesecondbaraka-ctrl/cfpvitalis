@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Role } from '../../common/enums/role.enum';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class PedagogieService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
   // ====================================
   // FORMATIONS
@@ -93,7 +97,18 @@ export class PedagogieService {
     if (user.role !== Role.ADMIN_CENTRE && mod.formation.etablissementId !== user.etablissementId) {
       throw new ForbiddenException('BR-02 : Ajout de cours interdit pour un établissement tiers.');
     }
-    return this.prisma.cours.create({ data: { ...data, moduleId } });
+    const cours = await this.prisma.cours.create({ data: { ...data, moduleId } });
+
+    // ─── Push temps réel : notifier tous les apprenants de l'établissement ───
+    this.notifications.emit({
+      type: 'COURS_PUBLIE',
+      recipientEtablissementId: mod.formation.etablissementId,
+      title: 'Nouveau cours disponible !',
+      message: `Un nouveau cours « ${data.titre} » a été publié dans le module « ${mod.titre} ».`,
+      data: { coursId: cours.id, coursTitre: cours.titre, moduleId, moduleTitre: mod.titre },
+    });
+
+    return cours;
   }
 
   async getCours(id: string) {
@@ -264,6 +279,15 @@ export class PedagogieService {
         },
         ipAdresse,
       },
+    });
+
+    // ─── Push temps réel : notifier l'apprenant que sa note a été publiée ───
+    this.notifications.emit({
+      type: 'NOTE_PUBLIEE',
+      recipientUserId: userId,
+      title: 'Note publiée !',
+      message: `Votre note pour l'évaluation « ${evaluation.titre} » a été enregistrée : ${valeur}/${evaluation.noteMaximale || 20}.`,
+      data: { evaluationId, evaluationTitre: evaluation.titre, note: valeur, noteMax: evaluation.noteMaximale || 20 },
     });
 
     return result;

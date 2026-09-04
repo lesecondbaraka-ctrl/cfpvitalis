@@ -7,8 +7,8 @@ import {
 export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./modules/auth/login/login.component').then(m => m.LoginComponent) },
   { path: 'register', loadComponent: () => import('./modules/auth/register/register.component').then(m => m.RegisterComponent) },
-  { path: 'candidature', canActivate: [apprenantGuard], loadComponent: () => import('./modules/admission/candidature/candidature.component').then(m => m.CandidatureComponent) },
-  { path: 'candidature/mes-voeux', canActivate: [apprenantGuard], loadComponent: () => import('./modules/admission/candidature/candidature.component').then(m => m.CandidatureComponent) },
+  { path: 'candidature', redirectTo: '/apprenant/candidatures', pathMatch: 'full' },
+  { path: 'candidature/mes-voeux', redirectTo: '/apprenant/candidatures', pathMatch: 'full' },
   { path: 'certificats/verifier/:numeroSerie', loadComponent: () => import('./modules/certificats/verify/verify.component').then(m => m.VerifyComponent) },
 
   // Tableau de bord multi-rôle (ADMIN, FORMATEUR, PERSONNEL) - Les APPRENANTS sont automatiquement redirigés vers /apprenant/dashboard
@@ -42,6 +42,7 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'dashboard', loadComponent: () => import('./modules/apprenant/dashboard/apprenant-dashboard.component').then(m => m.ApprenantDashboardComponent) },
+      { path: 'candidatures', loadComponent: () => import('./modules/admission/candidature/candidature.component').then(m => m.CandidatureComponent) },
       { path: 'formations', loadComponent: () => import('./modules/apprenant/mes-formations/mes-formations.component').then(m => m.MesFormationsComponent) },
       { path: 'formations/:id', loadComponent: () => import('./modules/apprenant/mes-formations/formation-detail/formation-detail.component').then(m => m.FormationDetailComponent) },
       { path: 'evaluations/quiz-player/:id', loadComponent: () => import('./modules/apprenant/evaluations/quiz-player/quiz-player.component').then(m => m.QuizPlayerComponent) },

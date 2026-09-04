@@ -1,6 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { ApprenantService, ApprenantDashboard } from '../../../core/services/apprenant.service';
 import { AuthService } from '../../../core/services/auth.service';
 
@@ -30,17 +31,17 @@ import { AuthService } from '../../../core/services/auth.service';
             </p>
           </div>
 
-          <div class="flex flex-col sm:flex-row gap-3 shrink-0">
+          <div class="flex flex-col sm:flex-row gap-2.5 sm:gap-3 shrink-0 w-full sm:w-auto">
             <a
               routerLink="/apprenant/formations"
-              class="px-5 py-2.5 bg-[#F0791E] hover:bg-[#d96612] text-white text-xs font-bold transition-all text-center flex items-center justify-center gap-2 shadow-xs rounded-xs cursor-pointer"
+              class="w-full sm:w-auto px-5 py-2.5 bg-[#F0791E] hover:bg-[#d96612] text-white text-xs font-bold transition-all text-center flex items-center justify-center gap-2 shadow-xs rounded-xs cursor-pointer"
             >
               <span>Continuer mes cours</span>
               <span>→</span>
             </a>
             <a
               routerLink="/apprenant/certificats"
-              class="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/30 text-xs font-semibold transition-all text-center flex items-center justify-center gap-2 rounded-xs cursor-pointer"
+              class="w-full sm:w-auto px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/30 text-xs font-semibold transition-all text-center flex items-center justify-center gap-2 rounded-xs cursor-pointer"
             >
               <span>Mes Certificats</span>
             </a>
@@ -48,71 +49,71 @@ import { AuthService } from '../../../core/services/auth.service';
         </div>
       </div>
 
-      <!-- KPI METRICS (5 CARDS) AVEC ICÔNES VECTORIELLES PROFESSIONNELLES -->
+      <!-- KPI METRICS (5 CARDS) ADAPTIVES MOBILE / TABLETTE / DESKTOP -->
       @if (dashboard) {
-        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
           <!-- KPI 1: Formations actives -->
-          <div class="p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col justify-between">
-            <div class="w-9 h-9 rounded-xs bg-[#E7F1FA] text-[#1C75BC] flex items-center justify-center mb-3 border border-[#1C75BC]/20">
-              <svg class="w-5 h-5 text-[#1C75BC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <div class="p-3.5 sm:p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col justify-between">
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xs bg-[#E7F1FA] text-[#1C75BC] flex items-center justify-center mb-2.5 sm:mb-3 border border-[#1C75BC]/20">
+              <svg class="w-4 h-4 sm:w-5 sm:h-5 text-[#1C75BC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
             </div>
             <div>
-              <p class="text-2xl font-bold text-[#1B1D1F] font-mono">{{ dashboard.nbFormations }}</p>
-              <p class="text-xs font-semibold text-[#4B5157] mt-0.5">Formations actives</p>
+              <p class="text-xl sm:text-2xl font-bold text-[#1B1D1F] font-mono leading-none">{{ dashboard.nbFormations }}</p>
+              <p class="text-[11px] sm:text-xs font-semibold text-[#4B5157] mt-1 truncate">Formations actives</p>
             </div>
           </div>
 
           <!-- KPI 2: Complétion moyenne -->
-          <div class="p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col justify-between">
-            <div class="w-9 h-9 rounded-xs bg-[#E7F1EA] text-[#276B44] flex items-center justify-center mb-3 border border-[#276B44]/20">
-              <svg class="w-5 h-5 text-[#276B44]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <div class="p-3.5 sm:p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col justify-between">
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xs bg-[#E7F1EA] text-[#276B44] flex items-center justify-center mb-2.5 sm:mb-3 border border-[#276B44]/20">
+              <svg class="w-4 h-4 sm:w-5 sm:h-5 text-[#276B44]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
             <div>
-              <p class="text-2xl font-bold text-[#276B44] font-mono">{{ dashboard.completionGlobale }}%</p>
-              <p class="text-xs font-semibold text-[#4B5157] mt-0.5">Complétion moyenne</p>
+              <p class="text-xl sm:text-2xl font-bold text-[#276B44] font-mono leading-none">{{ dashboard.completionGlobale }}%</p>
+              <p class="text-[11px] sm:text-xs font-semibold text-[#4B5157] mt-1 truncate">Complétion moyenne</p>
             </div>
           </div>
 
           <!-- KPI 3: Devoirs déposés -->
-          <div class="p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col justify-between">
-            <div class="w-9 h-9 rounded-xs bg-[#FDECDD] text-[#F0791E] flex items-center justify-center mb-3 border border-[#F0791E]/20">
-              <svg class="w-5 h-5 text-[#F0791E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <div class="p-3.5 sm:p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col justify-between">
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xs bg-[#FDECDD] text-[#F0791E] flex items-center justify-center mb-2.5 sm:mb-3 border border-[#F0791E]/20">
+              <svg class="w-4 h-4 sm:w-5 sm:h-5 text-[#F0791E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
             </div>
             <div>
-              <p class="text-2xl font-bold text-[#1B1D1F] font-mono">{{ dashboard.nbDevoirsDeposes }}</p>
-              <p class="text-xs font-semibold text-[#4B5157] mt-0.5">Devoirs déposés</p>
+              <p class="text-xl sm:text-2xl font-bold text-[#1B1D1F] font-mono leading-none">{{ dashboard.nbDevoirsDeposes }}</p>
+              <p class="text-[11px] sm:text-xs font-semibold text-[#4B5157] mt-1 truncate">Devoirs déposés</p>
             </div>
           </div>
 
           <!-- KPI 4: Quiz passés -->
-          <div class="p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col justify-between">
-            <div class="w-9 h-9 rounded-xs bg-[#E7F1FA] text-[#1C75BC] flex items-center justify-center mb-3 border border-[#1C75BC]/20">
-              <svg class="w-5 h-5 text-[#1C75BC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <div class="p-3.5 sm:p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col justify-between">
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xs bg-[#E7F1FA] text-[#1C75BC] flex items-center justify-center mb-2.5 sm:mb-3 border border-[#1C75BC]/20">
+              <svg class="w-4 h-4 sm:w-5 sm:h-5 text-[#1C75BC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div>
-              <p class="text-2xl font-bold text-[#1B1D1F] font-mono">{{ dashboard.nbQuizPasses }}</p>
-              <p class="text-xs font-semibold text-[#4B5157] mt-0.5">Quiz passés</p>
+              <p class="text-xl sm:text-2xl font-bold text-[#1B1D1F] font-mono leading-none">{{ dashboard.nbQuizPasses }}</p>
+              <p class="text-[11px] sm:text-xs font-semibold text-[#4B5157] mt-1 truncate">Quiz passés</p>
             </div>
           </div>
 
           <!-- KPI 5: Certificats obtenus -->
-          <div class="p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs col-span-2 sm:col-span-1 flex flex-col justify-between">
-            <div class="w-9 h-9 rounded-xs bg-[#FDECDD] text-[#F0791E] flex items-center justify-center mb-3 border border-[#F0791E]/20">
-              <svg class="w-5 h-5 text-[#F0791E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <div class="p-3.5 sm:p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs col-span-2 sm:col-span-1 flex flex-col justify-between">
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xs bg-[#FDECDD] text-[#F0791E] flex items-center justify-center mb-2.5 sm:mb-3 border border-[#F0791E]/20">
+              <svg class="w-4 h-4 sm:w-5 sm:h-5 text-[#F0791E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
               </svg>
             </div>
             <div>
-              <p class="text-2xl font-bold text-[#F0791E] font-mono">{{ dashboard.nbCertificats }}</p>
-              <p class="text-xs font-semibold text-[#4B5157] mt-0.5">Certificats obtenus</p>
+              <p class="text-xl sm:text-2xl font-bold text-[#F0791E] font-mono leading-none">{{ dashboard.nbCertificats }}</p>
+              <p class="text-[11px] sm:text-xs font-semibold text-[#4B5157] mt-1 truncate">Certificats obtenus</p>
             </div>
           </div>
         </div>
@@ -181,15 +182,16 @@ import { AuthService } from '../../../core/services/auth.service';
                       </div>
                     </div>
 
-                    <div class="flex sm:flex-col items-center sm:items-end justify-between gap-2 sm:min-w-[140px] shrink-0">
-                      <span class="text-xs font-bold font-mono" [class]="form.pourcentage === 100 ? 'text-[#276B44]' : 'text-[#1C75BC]'">
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 sm:pt-0 sm:min-w-[150px] shrink-0 border-t sm:border-t-0 border-[#D7DBDE]">
+                      <span class="text-xs font-bold font-mono text-left sm:text-right" [class]="form.pourcentage === 100 ? 'text-[#276B44]' : 'text-[#1C75BC]'">
                         {{ form.pourcentage }}% complété
                       </span>
                       <a
                         [routerLink]="['/apprenant/formations', form.id]"
-                        class="px-3.5 py-1.5 bg-[#1C75BC] hover:bg-[#124F80] text-white text-xs font-bold transition-all rounded-xs shadow-xs"
+                        class="w-full sm:w-auto px-4 py-2 bg-[#1C75BC] hover:bg-[#124F80] text-white text-xs font-bold transition-all rounded-xs shadow-xs text-center flex items-center justify-center gap-1.5 cursor-pointer"
                       >
-                        Consulter le cours →
+                        <span>Consulter le cours</span>
+                        <span>→</span>
                       </a>
                     </div>
                   </div>
@@ -281,10 +283,12 @@ import { AuthService } from '../../../core/services/auth.service';
     </div>
   `,
 })
-export class ApprenantDashboardComponent implements OnInit {
+export class ApprenantDashboardComponent implements OnInit, OnDestroy {
   dashboard: ApprenantDashboard | null = null;
   user: any = null;
   loading = true;
+
+  private liveSub?: Subscription;
 
   constructor(
     private apprenantService: ApprenantService,
@@ -301,6 +305,15 @@ export class ApprenantDashboardComponent implements OnInit {
     }
     // 2. Revalidation silencieuse en tâche de fond
     this.loadDashboard(cached === null);
+
+    // 3. Écouter les mises à jour temps réel SSE — recharger silencieusement
+    this.liveSub = this.apprenantService.liveUpdates$.subscribe(() => {
+      this.loadDashboard(false);
+    });
+  }
+
+  ngOnDestroy() {
+    this.liveSub?.unsubscribe();
   }
 
   loadDashboard(showSpinner = true) {

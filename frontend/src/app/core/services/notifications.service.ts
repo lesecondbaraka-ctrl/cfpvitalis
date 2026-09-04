@@ -2,9 +2,42 @@ import { Injectable, OnDestroy, NgZone } from '@angular/core';
 import { ReplaySubject, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
+export type NotificationEventType =
+  // ─── Module Apprenant ───────────────────────────────────────────────────────
+  | 'DEVOIR_NOTE'
+  | 'NOTE_PUBLIEE'
+  | 'COURS_PUBLIE'
+  | 'CERTIFICAT_EMIS'
+  // ─── Module Admission ───────────────────────────────────────────────────────
+  | 'ADMISSION_NEW_CANDIDATURE'
+  | 'ADMISSION_CONFIRMED'
+  | 'ADMISSION_INSCRIBED'
+  | 'ADMISSION_STATUS_CHANGE'
+  | 'DEMANDE_ORIENTATION'
+  // ─── Module Landing / Actualités ────────────────────────────────────────────
+  | 'ACTUALITE_UPDATE'
+  | 'LANDING_UPDATE'
+  // ─── Auth / Utilisateurs ────────────────────────────────────────────────────
+  | 'auth'
+  // ─── Générique ───────────────────────────────────────────────────────────────
+  | 'BROADCAST'
+  | (string & {});
+
+export interface NotificationPayload {
+  type: NotificationEventType;
+  recipientUserId?: string;
+  recipientEtablissementId?: string;
+  title?: string;
+  message?: string;
+  data?: Record<string, any>;
+  timestamp?: string;
+  event?: string;
+  [key: string]: any;
+}
+
 @Injectable({ providedIn: 'root' })
 export class NotificationsService implements OnDestroy {
-  private subject = new ReplaySubject<any>(1);
+  private subject = new ReplaySubject<NotificationPayload>(1);
   private es: EventSource | null = null;
   private reconnectAttempts = 0;
   private reconnectTimer: any = null;
@@ -17,18 +50,21 @@ export class NotificationsService implements OnDestroy {
     if (!token) return;
     const url = `${environment.apiUrl}/notifications/sse?token=${encodeURIComponent(token)}`;
     this.es = new EventSource(url);
-    this.es.onopen = () => { this.reconnectAttempts = 0; if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; } };
+    this.es.onopen = () => {
+      this.reconnectAttempts = 0;
+      if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+    };
     this.es.onmessage = (e) => {
       // run inside Angular zone so subscribers trigger change detection
       this.ngZone.run(() => {
         try {
-          this.subject.next(JSON.parse(e.data));
+          this.subject.next(JSON.parse(e.data) as NotificationPayload);
         } catch {
-          this.subject.next(e.data);
+          // ignore malformed messages
         }
       });
     };
-    this.es.onerror = (err) => {
+    this.es.onerror = () => {
       this.ngZone.run(() => {
         // close connection but do NOT error the subject to avoid terminating subscribers
         this.close();
@@ -41,7 +77,7 @@ export class NotificationsService implements OnDestroy {
     };
   }
 
-  messages(): Observable<any> {
+  messages(): Observable<NotificationPayload> {
     this.connect();
     return this.subject.asObservable();
   }

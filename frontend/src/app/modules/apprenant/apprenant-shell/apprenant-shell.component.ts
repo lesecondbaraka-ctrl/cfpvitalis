@@ -1,14 +1,41 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { Subscription } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { ApprenantService } from '../../../core/services/apprenant.service';
+import { NotificationsService, NotificationPayload } from '../../../core/services/notifications.service';
 
 @Component({
   selector: 'app-apprenant-shell',
   standalone: true,
   imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet],
   template: `
+    <!-- ─── TOASTS TEMPS RÉEL (Adaptive Responsive Positioning) ─────────────────────────────────────────── -->
+    <div class="fixed top-3 sm:top-4 inset-x-3 sm:left-auto sm:right-4 z-[9999] flex flex-col gap-2 sm:max-w-sm pointer-events-none">
+      @for (toast of toasts; track toast.id) {
+        <div
+          class="pointer-events-auto flex items-start gap-2.5 sm:gap-3 p-3.5 sm:p-4 rounded-lg shadow-2xl border text-xs sm:text-sm animate-slide-in"
+          [ngClass]="{
+            'bg-[#1B4B82] border-[#2563EB] text-white': toast.type === 'COURS_PUBLIE',
+            'bg-[#1A4731] border-[#16A34A] text-white': toast.type === 'CERTIFICAT_EMIS',
+            'bg-[#1C3A5A] border-[#0EA5E9] text-white': toast.type === 'NOTE_PUBLIEE' || toast.type === 'DEVOIR_NOTE',
+            'bg-[#1B1D1F] border-[#4B5157] text-white': toast.type === 'BROADCAST'
+          }"
+        >
+          <span class="text-lg sm:text-xl shrink-0 mt-0.5">{{ toastIcon(toast.type) }}</span>
+          <div class="flex-1 min-w-0">
+            <p class="font-bold text-xs sm:text-sm leading-tight">{{ toast.title }}</p>
+            <p class="text-[11px] sm:text-xs mt-0.5 opacity-90 leading-snug">{{ toast.message }}</p>
+          </div>
+          <button
+            (click)="dismissToast(toast.id)"
+            class="shrink-0 text-white/60 hover:text-white text-base sm:text-lg leading-none cursor-pointer p-1"
+          >×</button>
+        </div>
+      }
+    </div>
+
     <div class="flex min-h-screen bg-[#F5F6F7] font-sans text-[#1B1D1F] relative">
       <!-- MOBILE BACKDROP OVERLAY -->
       @if (isMobileMenuOpen) {
@@ -66,6 +93,12 @@ import { ApprenantService } from '../../../core/services/apprenant.service';
               </div>
             </div>
           }
+
+          <!-- Badge connexion SSE -->
+          <div class="mt-2 flex items-center gap-1.5 text-[10px]" [ngClass]="sseConnected ? 'text-[#4ADE80]' : 'text-[#F87171]'">
+            <span class="w-1.5 h-1.5 rounded-full" [ngClass]="sseConnected ? 'bg-[#4ADE80] animate-pulse' : 'bg-[#F87171]'"></span>
+            <span>{{ sseConnected ? 'Temps réel actif' : 'Connexion...' }}</span>
+          </div>
         </div>
 
         <!-- Navigation Links avec Icônes Vectorielles Professionnelles (SVG) -->
@@ -96,13 +129,16 @@ import { ApprenantService } from '../../../core/services/apprenant.service';
             <span>Mes Formations</span>
           </a>
 
+          <!-- 2. Mes Candidatures -->
           <a
-            routerLink="/candidature"
+            routerLink="/apprenant/candidatures"
             (click)="toggleMobileMenu(false)"
             routerLinkActive="bg-white/15 text-white font-bold border-l-4 border-[#F0791E] shadow-xs"
             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xs text-xs font-medium text-[#E7F1FA] hover:bg-white/10 hover:text-white transition-all group"
           >
-            <span class="w-4 text-center text-[#F0791E]">+</span>
+            <svg class="w-4 h-4 shrink-0 text-[#93C5FD] group-hover:text-[#F0791E] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
             <span>Mes candidatures</span>
           </a>
 
@@ -214,27 +250,101 @@ import { ApprenantService } from '../../../core/services/apprenant.service';
         </header>
 
         <!-- Dynamic Outlet with Responsive Margin & Padding -->
-        <main class="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto">
+        <main class="flex-1 p-3 sm:p-6 md:p-8 max-w-7xl w-full mx-auto min-w-0 overflow-x-hidden">
           <router-outlet />
         </main>
       </div>
     </div>
   `,
+  styles: [`
+    @keyframes slide-in {
+      from { transform: translateX(110%); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
+    }
+    .animate-slide-in { animation: slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  `],
 })
-export class ApprenantShellComponent implements OnInit {
+export class ApprenantShellComponent implements OnInit, OnDestroy {
   user: any = null;
   completionGlobale: number | null = null;
   isMobileMenuOpen = false;
+  sseConnected = false;
+
+  /** Liste des toasts affichés en overlay */
+  toasts: Array<NotificationPayload & { id: number }> = [];
+  private toastCounter = 0;
+
+  private sseSubscription?: Subscription;
 
   constructor(
     private auth: AuthService,
     private apprenantService: ApprenantService,
+    private notificationsService: NotificationsService,
     private router: Router,
   ) {}
 
   ngOnInit() {
     this.user = this.auth.currentUser;
     this.loadQuickStats();
+    this.connectSSE();
+
+    // Rafraîchir la progression globale à chaque événement temps réel
+    this.apprenantService.liveUpdates$.subscribe((event) => {
+      if (
+        event.type === 'DEVOIR_NOTE' ||
+        event.type === 'NOTE_PUBLIEE' ||
+        event.type === 'CERTIFICAT_EMIS'
+      ) {
+        this.apprenantService.getDashboard().subscribe({
+          next: (res) => { this.completionGlobale = res.completionGlobale; },
+          error: () => {},
+        });
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    this.sseSubscription?.unsubscribe();
+    this.notificationsService.close();
+  }
+
+  /** Ouvre la connexion SSE et branche la logique d'événements. */
+  private connectSSE() {
+    this.sseSubscription = this.notificationsService.messages().subscribe({
+      next: (payload: NotificationPayload) => {
+        this.sseConnected = true;
+        // 1. Afficher un toast immédiat
+        this.showToast(payload);
+        // 2. Invalider le cache + recharger les données en arrière-plan
+        this.apprenantService.triggerRealtimeRefresh(payload);
+      },
+      error: () => { this.sseConnected = false; },
+    });
+
+    // Marquer comme connecté dès l'ouverture (EventSource ouvert)
+    setTimeout(() => { this.sseConnected = true; }, 1000);
+  }
+
+  showToast(payload: NotificationPayload) {
+    const id = ++this.toastCounter;
+    this.toasts.push({ ...payload, id });
+    // Auto-dismiss après 6 secondes
+    setTimeout(() => this.dismissToast(id), 6000);
+  }
+
+  dismissToast(id: number) {
+    this.toasts = this.toasts.filter((t) => t.id !== id);
+  }
+
+  toastIcon(type: string): string {
+    const icons: Record<string, string> = {
+      DEVOIR_NOTE:   '📝',
+      NOTE_PUBLIEE:  '🎯',
+      COURS_PUBLIE:  '📚',
+      CERTIFICAT_EMIS: '🎓',
+      BROADCAST:     '📢',
+    };
+    return icons[type] ?? '🔔';
   }
 
   toggleMobileMenu(open?: boolean) {
@@ -242,17 +352,20 @@ export class ApprenantShellComponent implements OnInit {
   }
 
   loadQuickStats() {
+    // Charger depuis le cache immédiatement (0ms)
+    const snapshot = this.apprenantService.getDashboardSnapshot();
+    if (snapshot) this.completionGlobale = snapshot.completionGlobale;
+
+    // Revalider en arrière-plan
     this.apprenantService.getDashboard().subscribe({
-      next: (res) => {
-        this.completionGlobale = res.completionGlobale;
-      },
+      next: (res) => { this.completionGlobale = res.completionGlobale; },
       error: () => {},
     });
   }
 
   logout() {
+    this.notificationsService.close();
     this.auth.logout();
     this.router.navigate(['/login']);
   }
 }
-

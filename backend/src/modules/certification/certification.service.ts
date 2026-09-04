@@ -6,6 +6,7 @@ import { PedagogieService } from '../pedagogie/pedagogie.service';
 import { PdfService } from '../../common/services/pdf.service';
 import { StorageService } from '../../common/services/storage.service';
 import { Role } from '../../common/enums/role.enum';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class CertificationService {
@@ -15,6 +16,7 @@ export class CertificationService {
     private pdfService: PdfService,
     private storageService: StorageService,
     private config: ConfigService,
+    private notifications: NotificationsService,
   ) {}
 
   private async generateNumeroSerie(): Promise<string> {
@@ -105,6 +107,23 @@ export class CertificationService {
         ipAdresse: '0.0.0.0',
         tableCible: 'certificats',
         details: { certificat: numeroSerie, formation: formation.titre, moyenne },
+      },
+    });
+
+    // ─── Push temps réel : notifier l'apprenant de l'émission de son certificat ───
+    this.notifications.emit({
+      type: 'CERTIFICAT_EMIS',
+      recipientUserId: utilisateurId,
+      title: '🎓 Certificat officiel émis !',
+      message: `Félicitations ! Votre certificat « ${formation.titre} » (N° ${numeroSerie}) est disponible au téléchargement.`,
+      data: {
+        certificatId: certificat.id,
+        numeroSerie,
+        formationId,
+        formationTitre: formation.titre,
+        urlPdfS3,
+        moyenne,
+        verifyUrl,
       },
     });
 

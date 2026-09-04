@@ -150,7 +150,7 @@ import { ToastService } from '../../../core/services/toast.service';
                 <button
                   type="submit"
                   [disabled]="savingProfile"
-                  class="px-5 py-2.5 rounded-xs bg-[#1C75BC] hover:bg-[#124F80] text-white text-xs font-bold shadow-xs transition-all flex items-center gap-2"
+                  class="w-full sm:w-auto px-5 py-2.5 rounded-xs bg-[#1C75BC] hover:bg-[#124F80] text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer text-center"
                 >
                   <span>{{ savingProfile ? 'Enregistrement...' : 'Enregistrer les modifications' }}</span>
                 </button>
@@ -205,7 +205,7 @@ import { ToastService } from '../../../core/services/toast.service';
                 <button
                   type="submit"
                   [disabled]="savingPassword"
-                  class="px-5 py-2.5 rounded-xs bg-[#F0791E] hover:bg-[#d96612] text-white text-xs font-bold shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                  class="w-full sm:w-auto px-5 py-2.5 rounded-xs bg-[#F0791E] hover:bg-[#d96612] text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer text-center"
                 >
                   <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
