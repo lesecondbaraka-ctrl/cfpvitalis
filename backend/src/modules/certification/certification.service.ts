@@ -145,8 +145,14 @@ export class CertificationService {
   }
 
   async verifyCertificat(numeroSerie: string) {
-    const cert = await this.prisma.certificat.findUnique({
-      where: { numeroSerie },
+    const cleanNum = (numeroSerie || '').trim();
+    const cert = await this.prisma.certificat.findFirst({
+      where: {
+        numeroSerie: {
+          equals: cleanNum,
+          mode: 'insensitive',
+        },
+      },
       include: {
         utilisateur: { select: { nom: true, prenom: true, email: true } },
         formation: { select: { titre: true, etablissement: { select: { nom: true } } } },
@@ -157,7 +163,15 @@ export class CertificationService {
   }
 
   async getPdfUrl(numeroSerie: string, user: any) {
-    const cert = await this.prisma.certificat.findUnique({ where: { numeroSerie } });
+    const cleanNum = (numeroSerie || '').trim();
+    const cert = await this.prisma.certificat.findFirst({
+      where: {
+        numeroSerie: {
+          equals: cleanNum,
+          mode: 'insensitive',
+        },
+      },
+    });
     if (!cert) throw new NotFoundException('Certificat introuvable.');
     if (user.role === Role.APPRENANT && cert.utilisateurId !== user.id) {
       throw new ForbiddenException('Accès interdit.');

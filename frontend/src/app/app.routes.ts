@@ -9,7 +9,10 @@ export const routes: Routes = [
   { path: 'register', loadComponent: () => import('./modules/auth/register/register.component').then(m => m.RegisterComponent) },
   { path: 'candidature', redirectTo: '/apprenant/candidatures', pathMatch: 'full' },
   { path: 'candidature/mes-voeux', redirectTo: '/apprenant/candidatures', pathMatch: 'full' },
+  { path: 'certificats/verifier', loadComponent: () => import('./modules/certificats/verify/verify.component').then(m => m.VerifyComponent) },
   { path: 'certificats/verifier/:numeroSerie', loadComponent: () => import('./modules/certificats/verify/verify.component').then(m => m.VerifyComponent) },
+  { path: 'verifier', redirectTo: 'certificats/verifier', pathMatch: 'full' },
+  { path: 'verifier/:numeroSerie', redirectTo: 'certificats/verifier/:numeroSerie' },
 
   // Tableau de bord multi-rôle (ADMIN, FORMATEUR, PERSONNEL) - Les APPRENANTS sont automatiquement redirigés vers /apprenant/dashboard
   { path: 'dashboard', canActivate: [staffGuard], loadComponent: () => import('./modules/dashboard/dashboard.component').then(m => m.DashboardComponent) },
@@ -48,6 +51,10 @@ export const routes: Routes = [
       { path: 'evaluations/quiz-player/:id', loadComponent: () => import('./modules/apprenant/evaluations/quiz-player/quiz-player.component').then(m => m.QuizPlayerComponent) },
       { path: 'evaluations/depot-devoir', loadComponent: () => import('./modules/apprenant/evaluations/depot-devoir/depot-devoir.component').then(m => m.DepotDevoirComponent) },
       { path: 'certificats', loadComponent: () => import('./modules/apprenant/mes-certificats/mes-certificats.component').then(m => m.MesCertificatsComponent) },
+      { path: 'certificats/verifier/:numeroSerie', redirectTo: '/certificats/verifier/:numeroSerie' },
+      { path: 'certificats/verifier', redirectTo: '/certificats/verifier' },
+      { path: 'verifier/:numeroSerie', redirectTo: '/certificats/verifier/:numeroSerie' },
+      { path: 'verifier', redirectTo: '/certificats/verifier' },
       { path: 'profil', loadComponent: () => import('./modules/apprenant/mon-profil/mon-profil.component').then(m => m.MonProfilComponent) },
     ],
   },

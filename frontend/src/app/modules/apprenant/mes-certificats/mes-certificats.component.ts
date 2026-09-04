@@ -352,7 +352,6 @@ import { ToastService } from '../../../core/services/toast.service';
                     <!-- 3. Vérifier en ligne sur le registre -->
                     <a
                       [routerLink]="['/certificats/verifier', c.numeroSerie]"
-                      target="_blank"
                       class="px-3 py-2.5 rounded-xs bg-[#F5F6F7] hover:bg-[#D7DBDE] text-[#1B1D1F] border border-[#D7DBDE] text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                       title="Vérifier sur le registre public officiel"
                     >

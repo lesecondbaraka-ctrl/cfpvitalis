@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Vitalis Center EUP</title>
+  <script>
+    // Stocke l'URL complète demandée puis redirige vers la racine SPA pour résolution Angular
+    var path = window.location.pathname;
+    var search = window.location.search;
+    var hash = window.location.hash;
+    sessionStorage.setItem('spa_redirect', path + search + hash);
+    window.location.replace('/');
+  </script>
+</head>
+<body>
+  <p style="font-family: sans-serif; text-align: center; margin-top: 20vh; color: #124F80;">
+    Chargement de Vitalis Center...
+  </p>
+</body>
+</html>

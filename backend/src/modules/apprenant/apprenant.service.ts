@@ -969,12 +969,18 @@ export class ApprenantService {
 
   /**
    * Télécharger / récupérer le PDF d'un certificat avec données complètes
+   * Accepte soit l'ID UUID du certificat, soit son numéro de série officiel
    */
-  async getCertificatPdf(certificatId: string, user: any) {
+  async getCertificatPdf(certificatIdOrNum: string, user: any) {
     this.assertApprenant(user);
 
-    const certificat = await this.prisma.certificat.findUnique({
-      where: { id: certificatId },
+    const clean = (certificatIdOrNum || '').trim();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean);
+
+    const certificat = await this.prisma.certificat.findFirst({
+      where: isUuid
+        ? { id: clean }
+        : { numeroSerie: { equals: clean, mode: 'insensitive' } },
       include: {
         utilisateur: { select: { id: true, nom: true, prenom: true, email: true } },
         formation: {

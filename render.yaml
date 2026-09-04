@@ -3,7 +3,7 @@ services:
   # 1. BACKEND API (NestJS Web Service)
   # -------------------------------------------------------------
   - type: web
-    name: cfpvitalis-backend
+    name: cfpvitalis
     runtime: node
     plan: free
     region: frankfurt

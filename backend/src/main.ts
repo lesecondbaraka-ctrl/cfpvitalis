@@ -1,4 +1,5 @@
 import * as dotenv from 'dotenv';
+import * as fs from 'fs';
 import { join } from 'path';
 
 // Charger l'environnement dès le démarrage
@@ -116,7 +117,12 @@ async function bootstrap() {
   });
   app.use('/api/landing/contact', contactLimiter);
 
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+  const uploadsDir = join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  app.useStaticAssets(uploadsDir, {
     prefix: '/uploads/',
     index: false,
     setHeaders: (res, path, stat) => {

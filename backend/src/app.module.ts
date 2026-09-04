@@ -1,6 +1,8 @@
 import { Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_PIPE, APP_GUARD } from '@nestjs/core';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { CommonModule } from './common/common.module';
 import { UtilisateursModule } from './modules/utilisateurs/utilisateurs.module';
@@ -40,7 +42,9 @@ import { RolesGuard } from './common/guards/roles.guard';
     ApprenantModule,
     AdmissionModule,
   ],
+  controllers: [AppController],
   providers: [
+    AppService,
     EtablissementGuard,
     {
       provide: APP_PIPE,

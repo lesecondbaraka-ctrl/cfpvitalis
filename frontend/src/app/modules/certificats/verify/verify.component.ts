@@ -27,9 +27,22 @@ import { CertificationService } from '../../../core/services/certification.servi
               <p class="text-[10px] text-[#F0791E] font-semibold uppercase tracking-wider">Registre Officiel des Certifications</p>
             </div>
           </a>
-          <div class="flex items-center gap-2">
-            <div class="w-2.5 h-2.5 rounded-full bg-[#276B44] animate-pulse"></div>
-            <span class="text-xs font-semibold text-[#E7F1FA]">Système en ligne</span>
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              (click)="retour()"
+              class="px-3 py-1.5 rounded-xs bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Retourner à la page précédente"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              <span>Retour</span>
+            </button>
+            <div class="hidden sm:flex items-center gap-2">
+              <div class="w-2.5 h-2.5 rounded-full bg-[#276B44] animate-pulse"></div>
+              <span class="text-xs font-semibold text-[#E7F1FA]">Système en ligne</span>
+            </div>
           </div>
         </div>
       </header>
@@ -233,9 +246,11 @@ export class VerifyComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    // S'abonne aux changements d'URL en temps réel
+    // S'abonne aux changements d'URL en temps réel (paramètres de route et query params)
     this.route.paramMap.subscribe(params => {
-      const num = params.get('numeroSerie');
+      const paramNum = params.get('numeroSerie');
+      const queryNum = this.route.snapshot.queryParamMap.get('numero') || this.route.snapshot.queryParamMap.get('num');
+      const num = paramNum || queryNum;
       if (num) {
         this.numeroSerie = num.trim().toUpperCase();
         this.searchInput = this.numeroSerie;
@@ -244,6 +259,14 @@ export class VerifyComponent implements OnInit {
         this.loading = false;
       }
     });
+  }
+
+  retour() {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      this.router.navigate(['/']);
+    }
   }
 
   verifier(num: string) {

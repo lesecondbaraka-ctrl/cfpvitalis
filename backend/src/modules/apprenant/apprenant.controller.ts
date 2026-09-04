@@ -151,15 +151,28 @@ export class ApprenantController {
   }
 
   /**
-   * GET /apprenant/certificats/:id/telecharger
-   * Stream binaire direct du PDF officiel vers l'appareil de l'apprenant
+   * GET /apprenant/certificats/:id/telecharger (et alias :id/download)
+   * Stream binaire direct du PDF officiel vers l'appareil de l'apprenant (id UUID ou numeroSerie)
    */
   @Get('certificats/:id/telecharger')
   async telechargerCertificat(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Req() req: any,
     @Res() res: Response,
   ) {
+    return this.streamPdf(id, req, res);
+  }
+
+  @Get('certificats/:id/download')
+  async downloadCertificat(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
+    return this.streamPdf(id, req, res);
+  }
+
+  private async streamPdf(id: string, req: any, res: Response) {
     const cert: any = await this.service.getCertificatPdf(id, req.user);
     const localPath = cert.urlPdfS3 ? this.storage.getLocalPath(cert.urlPdfS3) : null;
 
