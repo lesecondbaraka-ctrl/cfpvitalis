@@ -24,10 +24,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       }
       PrismaService.pool = new Pool({
         connectionString,
-        connectionTimeoutMillis: 5000,
+        connectionTimeoutMillis: 20000,
         idleTimeoutMillis: 60000,
         max: 20,
         keepAlive: true,
+        ssl: { rejectUnauthorized: false },
       });
       PrismaService.adapter = new PrismaPg(PrismaService.pool);
     }

@@ -968,6 +968,70 @@ export class ApprenantService {
   }
 
   /**
+   * Agrégat optimisé : tous les quiz de l'apprenant en une seule requête SQL
+   */
+  async getAllQuiz(user: any) {
+    this.assertApprenant(user);
+    const cacheKey = `quiz_all:${user.id}`;
+    const cached = this.getFromCache<any>(cacheKey);
+    if (cached) return cached;
+
+    const quizList = await this.prisma.quiz.findMany({
+      where: {
+        module: {
+          formation: {
+            etablissementId: user.etablissementId,
+          },
+        },
+      },
+      include: {
+        module: {
+          select: {
+            id: true,
+            titre: true,
+            formation: {
+              select: { id: true, titre: true },
+            },
+          },
+        },
+        questions: { select: { id: true } },
+        tentatives: {
+          where: { apprenantId: user.id },
+          select: {
+            id: true,
+            score: true,
+            datePassage: true,
+          },
+        },
+      },
+      orderBy: [{ titre: 'asc' }],
+    });
+
+    const result = quizList.map((q) => {
+      const tentative = q.tentatives[0] || null;
+      return {
+        id: q.id,
+        titre: q.titre,
+        dureeMinutes: q.dureeMinutes,
+        nbQuestions: q.questions.length,
+        moduleId: q.module.id,
+        moduleTitre: q.module.titre,
+        formationId: q.module.formation.id,
+        formationTitre: q.module.formation.titre,
+        tentative: tentative
+          ? {
+              id: tentative.id,
+              score: Number(tentative.score),
+              datePassage: tentative.datePassage,
+            }
+          : null,
+      };
+    });
+
+    return this.setCache(cacheKey, result, 60_000);
+  }
+
+  /**
    * Télécharger / récupérer le PDF d'un certificat avec données complètes
    * Accepte soit l'ID UUID du certificat, soit son numéro de série officiel
    */

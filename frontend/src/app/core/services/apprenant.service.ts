@@ -162,6 +162,22 @@ export interface QuizSubmissionResult {
   }>;
 }
 
+export interface ApprenantQuizItem {
+  id: string;
+  titre: string;
+  dureeMinutes: number | null;
+  nbQuestions: number;
+  moduleId: string;
+  moduleTitre: string;
+  formationId: string;
+  formationTitre: string;
+  tentative: {
+    id: string;
+    score: number;
+    datePassage: string;
+  } | null;
+}
+
 export interface ApprenantCertificat {
   id: string;
   numeroSerie: string;
@@ -396,6 +412,16 @@ export class ApprenantService {
   getAllDevoirs(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/devoirs`).pipe(
       tap((data) => this.setLocal(this.CACHE_KEYS.DEVOIRS, data)),
+      shareReplay(1),
+    );
+  }
+
+  /**
+   * Récupère tous les quiz de l'apprenant en UNE SEULE requête (endpoint agrégé backend)
+   */
+  getAllQuiz(): Observable<ApprenantQuizItem[]> {
+    return this.http.get<ApprenantQuizItem[]>(`${this.apiUrl}/quiz`).pipe(
+      tap((data) => this.setLocal('vc_quiz_list', data)),
       shareReplay(1),
     );
   }

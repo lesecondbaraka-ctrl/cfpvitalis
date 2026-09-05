@@ -53,69 +53,86 @@ import { AuthService } from '../../../core/services/auth.service';
       @if (dashboard) {
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
           <!-- KPI 1: Formations actives -->
-          <div class="p-3.5 sm:p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col justify-between">
-            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xs bg-[#E7F1FA] text-[#1C75BC] flex items-center justify-center mb-2.5 sm:mb-3 border border-[#1C75BC]/20">
+          <a
+            routerLink="/apprenant/formations"
+            class="p-3.5 sm:p-5 bg-white border border-[#D7DBDE] hover:border-[#1C75BC] hover:bg-[#F5F6F7] rounded-xs shadow-xs flex flex-col justify-between transition-all group cursor-pointer"
+          >
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xs bg-[#E7F1FA] text-[#1C75BC] flex items-center justify-center mb-2.5 sm:mb-3 border border-[#1C75BC]/20 group-hover:scale-105 transition-transform">
               <svg class="w-4 h-4 sm:w-5 sm:h-5 text-[#1C75BC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
             </div>
             <div>
               <p class="text-xl sm:text-2xl font-bold text-[#1B1D1F] font-mono leading-none">{{ dashboard.nbFormations }}</p>
-              <p class="text-[11px] sm:text-xs font-semibold text-[#4B5157] mt-1 truncate">Formations actives</p>
+              <p class="text-[11px] sm:text-xs font-semibold text-[#4B5157] mt-1 truncate group-hover:text-[#1C75BC] transition-colors">Formations actives →</p>
             </div>
-          </div>
+          </a>
 
           <!-- KPI 2: Complétion moyenne -->
-          <div class="p-3.5 sm:p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col justify-between">
-            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xs bg-[#E7F1EA] text-[#276B44] flex items-center justify-center mb-2.5 sm:mb-3 border border-[#276B44]/20">
+          <a
+            routerLink="/apprenant/formations"
+            class="p-3.5 sm:p-5 bg-white border border-[#D7DBDE] hover:border-[#276B44] hover:bg-[#F5F6F7] rounded-xs shadow-xs flex flex-col justify-between transition-all group cursor-pointer"
+          >
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xs bg-[#E7F1EA] text-[#276B44] flex items-center justify-center mb-2.5 sm:mb-3 border border-[#276B44]/20 group-hover:scale-105 transition-transform">
               <svg class="w-4 h-4 sm:w-5 sm:h-5 text-[#276B44]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
             <div>
               <p class="text-xl sm:text-2xl font-bold text-[#276B44] font-mono leading-none">{{ dashboard.completionGlobale }}%</p>
-              <p class="text-[11px] sm:text-xs font-semibold text-[#4B5157] mt-1 truncate">Complétion moyenne</p>
+              <p class="text-[11px] sm:text-xs font-semibold text-[#4B5157] mt-1 truncate group-hover:text-[#276B44] transition-colors">Complétion moyenne →</p>
             </div>
-          </div>
+          </a>
 
           <!-- KPI 3: Devoirs déposés -->
-          <div class="p-3.5 sm:p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col justify-between">
-            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xs bg-[#FDECDD] text-[#F0791E] flex items-center justify-center mb-2.5 sm:mb-3 border border-[#F0791E]/20">
+          <a
+            routerLink="/apprenant/evaluations/depot-devoir"
+            [queryParams]="{ tab: 'devoirs' }"
+            class="p-3.5 sm:p-5 bg-white border border-[#D7DBDE] hover:border-[#F0791E] hover:bg-[#F5F6F7] rounded-xs shadow-xs flex flex-col justify-between transition-all group cursor-pointer"
+          >
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xs bg-[#FDECDD] text-[#F0791E] flex items-center justify-center mb-2.5 sm:mb-3 border border-[#F0791E]/20 group-hover:scale-105 transition-transform">
               <svg class="w-4 h-4 sm:w-5 sm:h-5 text-[#F0791E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
             </div>
             <div>
               <p class="text-xl sm:text-2xl font-bold text-[#1B1D1F] font-mono leading-none">{{ dashboard.nbDevoirsDeposes }}</p>
-              <p class="text-[11px] sm:text-xs font-semibold text-[#4B5157] mt-1 truncate">Devoirs déposés</p>
+              <p class="text-[11px] sm:text-xs font-semibold text-[#4B5157] mt-1 truncate group-hover:text-[#F0791E] transition-colors">Mes Devoirs →</p>
             </div>
-          </div>
+          </a>
 
           <!-- KPI 4: Quiz passés -->
-          <div class="p-3.5 sm:p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs flex flex-col justify-between">
-            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xs bg-[#E7F1FA] text-[#1C75BC] flex items-center justify-center mb-2.5 sm:mb-3 border border-[#1C75BC]/20">
+          <a
+            routerLink="/apprenant/evaluations/depot-devoir"
+            [queryParams]="{ tab: 'quiz' }"
+            class="p-3.5 sm:p-5 bg-white border border-[#D7DBDE] hover:border-[#1C75BC] hover:bg-[#F5F6F7] rounded-xs shadow-xs flex flex-col justify-between transition-all group cursor-pointer"
+          >
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xs bg-[#E7F1FA] text-[#1C75BC] flex items-center justify-center mb-2.5 sm:mb-3 border border-[#1C75BC]/20 group-hover:scale-105 transition-transform">
               <svg class="w-4 h-4 sm:w-5 sm:h-5 text-[#1C75BC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div>
               <p class="text-xl sm:text-2xl font-bold text-[#1B1D1F] font-mono leading-none">{{ dashboard.nbQuizPasses }}</p>
-              <p class="text-[11px] sm:text-xs font-semibold text-[#4B5157] mt-1 truncate">Quiz passés</p>
+              <p class="text-[11px] sm:text-xs font-semibold text-[#4B5157] mt-1 truncate group-hover:text-[#1C75BC] transition-colors">Mes Quiz →</p>
             </div>
-          </div>
+          </a>
 
           <!-- KPI 5: Certificats obtenus -->
-          <div class="p-3.5 sm:p-5 bg-white border border-[#D7DBDE] rounded-xs shadow-xs col-span-2 sm:col-span-1 flex flex-col justify-between">
-            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xs bg-[#FDECDD] text-[#F0791E] flex items-center justify-center mb-2.5 sm:mb-3 border border-[#F0791E]/20">
+          <a
+            routerLink="/apprenant/certificats"
+            class="p-3.5 sm:p-5 bg-white border border-[#D7DBDE] hover:border-[#F0791E] hover:bg-[#F5F6F7] rounded-xs shadow-xs col-span-2 sm:col-span-1 flex flex-col justify-between transition-all group cursor-pointer"
+          >
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xs bg-[#FDECDD] text-[#F0791E] flex items-center justify-center mb-2.5 sm:mb-3 border border-[#F0791E]/20 group-hover:scale-105 transition-transform">
               <svg class="w-4 h-4 sm:w-5 sm:h-5 text-[#F0791E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
               </svg>
             </div>
             <div>
               <p class="text-xl sm:text-2xl font-bold text-[#F0791E] font-mono leading-none">{{ dashboard.nbCertificats }}</p>
-              <p class="text-[11px] sm:text-xs font-semibold text-[#4B5157] mt-1 truncate">Certificats obtenus</p>
+              <p class="text-[11px] sm:text-xs font-semibold text-[#4B5157] mt-1 truncate group-hover:text-[#F0791E] transition-colors">Certificats →</p>
             </div>
-          </div>
+          </a>
         </div>
       }
 

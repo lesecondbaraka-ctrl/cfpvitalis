@@ -92,6 +92,15 @@ export class ApprenantController {
   }
 
   /**
+   * GET /apprenant/quiz
+   * Agrégat optimisé : tous les quiz de l'apprenant à travers ses formations
+   */
+  @Get('quiz')
+  getAllQuiz(@Req() req: any) {
+    return this.service.getAllQuiz(req.user);
+  }
+
+  /**
    * GET /apprenant/quiz/:id
    * Récupère les questions (sans les bonnes réponses pour sécuriser le quiz)
    */

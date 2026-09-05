@@ -1,9 +1,9 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { ApprenantService } from '../../../../core/services/apprenant.service';
+import { ApprenantService, ApprenantQuizItem } from '../../../../core/services/apprenant.service';
 import { DevoirsService } from '../../../../core/services/devoirs.service';
 import { ToastService } from '../../../../core/services/toast.service';
 
@@ -24,20 +24,21 @@ interface DevoirItem {
 }
 
 type DevoirFilterStatus = 'TOUS' | 'A_RENDRE' | 'DEPOSES' | 'NOTES';
+type EvaluationTab = 'DEVOIRS' | 'QUIZ';
 
 @Component({
   selector: 'app-depot-devoir',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div class="space-y-6 sm:space-y-8 animate-fade-in pb-12 min-w-0">
       <!-- HEADER OFFICIEL VITALIS CENTER -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-bold text-[#1B1D1F] font-heading">Devoirs & Évaluations Pratiques</h1>
+          <h1 class="text-2xl font-bold text-[#1B1D1F] font-heading">Centre des Évaluations & Contrôle Continu</h1>
           <div class="barre"></div>
           <p class="text-xs text-[#4B5157] mt-2">
-            Espace d'évaluation continue : déposez vos travaux pratiques, projets et devoirs encadrés par le corps professoral.
+            Espace pédagogique officiel : travaux pratiques encadrés par le corps professoral et quiz de validation des connaissances.
           </p>
         </div>
 
@@ -47,13 +48,55 @@ type DevoirFilterStatus = 'TOUS' | 'A_RENDRE' | 'DEPOSES' | 'NOTES';
             Synchronisation SSE active
           </span>
           <span class="text-xs font-bold text-[#1B1D1F] bg-white border border-[#D7DBDE] px-3 py-1 rounded-xs shadow-2xs font-mono">
-            {{ devoirs.length }} devoir{{ devoirs.length === 1 ? '' : 's' }}
+            {{ activeTab === 'DEVOIRS' ? devoirs.length + ' devoir(s)' : quizList.length + ' quiz' }}
           </span>
         </div>
       </div>
 
-      <!-- BANDEAU DE 4 KPIS INTERACTIFS (FILTRES EN 1 CLIC CONFORMES À LA CHARTE) -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <!-- ONGLETS DE NAVIGATION : DEVOIRS / QUIZ -->
+      <div class="flex items-center gap-2 border-b border-[#D7DBDE] overflow-x-auto whitespace-nowrap pb-0.5">
+        <button
+          type="button"
+          (click)="switchTab('DEVOIRS')"
+          class="px-4 py-2.5 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2 shrink-0"
+          [class]="activeTab === 'DEVOIRS' ? 'border-[#1C75BC] text-[#1C75BC]' : 'border-transparent text-[#4B5157] hover:text-[#1B1D1F]'"
+        >
+          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+          <span>Devoirs & Travaux Pratiques</span>
+          <span
+            class="px-1.5 py-0.5 rounded-xs text-[10px] font-mono font-bold"
+            [class]="kpiARendre > 0 ? 'bg-[#FDECDD] text-[#F0791E] border border-[#F0791E]' : 'bg-[#F5F6F7] text-[#4B5157] border border-[#D7DBDE]'"
+          >
+            {{ devoirs.length }}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          (click)="switchTab('QUIZ')"
+          class="px-4 py-2.5 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2 shrink-0"
+          [class]="activeTab === 'QUIZ' ? 'border-[#1C75BC] text-[#1C75BC]' : 'border-transparent text-[#4B5157] hover:text-[#1B1D1F]'"
+        >
+          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Quiz & Évaluations en ligne</span>
+          <span
+            class="px-1.5 py-0.5 rounded-xs text-[10px] font-mono font-bold"
+            [class]="kpiQuizAPasser > 0 ? 'bg-[#E7F1FA] text-[#1C75BC] border border-[#1C75BC]' : 'bg-[#F5F6F7] text-[#4B5157] border border-[#D7DBDE]'"
+          >
+            {{ quizList.length }}
+          </span>
+        </button>
+      </div>
+
+      <!-- ─── CONTENU ONGLETS ────────────────────────────────────────────── -->
+      @if (activeTab === 'DEVOIRS') {
+        <div class="space-y-6 sm:space-y-8 animate-fade-in">
+        <!-- BANDEAU DE 4 KPIS INTERACTIFS (FILTRES EN 1 CLIC CONFORMES À LA CHARTE) -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <!-- 1. TOUS -->
         <button
           type="button"
@@ -541,14 +584,207 @@ type DevoirFilterStatus = 'TOUS' | 'A_RENDRE' | 'DEPOSES' | 'NOTES';
         </div>
       }
     </div>
+  } @else if (activeTab === 'QUIZ') {
+        <div class="space-y-6 sm:space-y-8 animate-fade-in">
+          <!-- BANDEAU DE 4 KPIS QUIZ -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <!-- 1. TOTAL QUIZ -->
+            <button
+              type="button"
+              (click)="setQuizFilter('TOUS')"
+              class="p-3.5 sm:p-4 rounded-xs border text-left transition-all cursor-pointer shadow-2xs flex flex-col justify-between"
+              [class]="quizFilterStatus === 'TOUS' ? 'bg-[#E7F1FA] border-[#1C75BC] border-l-4 border-l-[#1C75BC]' : 'bg-white border-[#D7DBDE] hover:border-[#1C75BC] hover:bg-[#F5F6F7]'"
+            >
+              <div class="flex items-center justify-between text-xs text-[#4B5157] font-semibold">
+                <span>Tous les quiz</span>
+                <svg class="w-4 h-4 text-[#1C75BC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div class="mt-3 flex items-baseline justify-between">
+                <span class="text-2xl font-black text-[#1B1D1F] font-mono">{{ kpiQuizTotal }}</span>
+                <span class="text-[11px] text-[#71787E] uppercase font-bold tracking-wider">Totalité</span>
+              </div>
+            </button>
+
+            <!-- 2. À PASSER -->
+            <button
+              type="button"
+              (click)="setQuizFilter('A_PASSER')"
+              class="p-3.5 sm:p-4 rounded-xs border text-left transition-all cursor-pointer shadow-2xs flex flex-col justify-between"
+              [class]="quizFilterStatus === 'A_PASSER' ? 'bg-[#FDECDD] border-[#F0791E] border-l-4 border-l-[#F0791E]' : 'bg-white border-[#D7DBDE] hover:border-[#F0791E] hover:bg-[#F5F6F7]'"
+            >
+              <div class="flex items-center justify-between text-xs font-semibold" [class]="kpiQuizAPasser > 0 ? 'text-[#F0791E]' : 'text-[#4B5157]'">
+                <span>À passer</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded-xs bg-[#FDECDD] text-[#F0791E] border border-[#F0791E] font-bold uppercase tracking-wider">Action</span>
+              </div>
+              <div class="mt-3 flex items-baseline justify-between">
+                <span class="text-2xl font-black font-mono" [class]="kpiQuizAPasser > 0 ? 'text-[#F0791E]' : 'text-[#1B1D1F]'">{{ kpiQuizAPasser }}</span>
+                <span class="text-[11px] text-[#71787E] uppercase font-bold tracking-wider">En attente</span>
+              </div>
+            </button>
+
+            <!-- 3. VALIDÉS -->
+            <button
+              type="button"
+              (click)="setQuizFilter('VALIDES')"
+              class="p-3.5 sm:p-4 rounded-xs border text-left transition-all cursor-pointer shadow-2xs flex flex-col justify-between"
+              [class]="quizFilterStatus === 'VALIDES' ? 'bg-[#E7F1EA] border-[#276B44] border-l-4 border-l-[#276B44]' : 'bg-white border-[#D7DBDE] hover:border-[#276B44] hover:bg-[#F5F6F7]'"
+            >
+              <div class="flex items-center justify-between text-xs text-[#276B44] font-semibold">
+                <span>Validés (≥ 50%)</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded-xs bg-[#E7F1EA] text-[#276B44] border border-[#276B44] font-bold uppercase tracking-wider">Réussis</span>
+              </div>
+              <div class="mt-3 flex items-baseline justify-between">
+                <span class="text-2xl font-black text-[#276B44] font-mono">{{ kpiQuizValides }}</span>
+                <span class="text-[11px] text-[#71787E] uppercase font-bold tracking-wider">Succès</span>
+              </div>
+            </button>
+
+            <!-- 4. MOYENNE QUIZ -->
+            <div class="p-3.5 sm:p-4 rounded-xs border border-[#D7DBDE] bg-white shadow-2xs flex flex-col justify-between">
+              <div class="flex items-center justify-between text-xs text-[#4B5157] font-semibold">
+                <span>Moyenne Quiz</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded-xs bg-[#E7F1FA] text-[#1C75BC] border border-[#1C75BC] font-bold font-mono">
+                  {{ moyenneQuiz !== null ? moyenneQuiz + '%' : 'N/A' }}
+                </span>
+              </div>
+              <div class="mt-3 flex items-baseline justify-between">
+                <span class="text-2xl font-black text-[#1C75BC] font-mono">{{ moyenneQuiz !== null ? moyenneQuiz + '%' : '-' }}</span>
+                <span class="text-[11px] text-[#71787E] uppercase font-bold tracking-wider">Performance</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- BARRE DE RECHERCHE QUIZ -->
+          <div class="p-3 bg-white border border-[#D7DBDE] rounded-xs shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="relative w-full sm:max-w-md">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#71787E]">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </span>
+              <input
+                type="text"
+                [(ngModel)]="quizSearchQuery"
+                placeholder="Rechercher par titre de quiz, module ou formation..."
+                class="w-full pl-9 pr-3 py-1.5 rounded-xs border border-[#D7DBDE] text-xs text-[#1B1D1F] placeholder-[#71787E] focus:outline-none focus:border-[#1C75BC] focus:ring-1 focus:ring-[#1C75BC] transition-all bg-[#F5F6F7] focus:bg-white"
+              />
+            </div>
+
+            <div class="flex items-center gap-2 self-end sm:self-auto text-xs text-[#4B5157]">
+              <span>Affichage : <strong>{{ filteredQuiz.length }}</strong> sur {{ quizList.length }} quiz</span>
+            </div>
+          </div>
+
+          <!-- LISTE DES CARTES QUIZ -->
+          @if (loadingQuiz) {
+            <div class="p-16 text-center text-[#4B5157] bg-white border border-[#D7DBDE] rounded-xs shadow-xs">
+              <div class="inline-block w-8 h-8 border-3 border-[#1C75BC] border-t-transparent rounded-full animate-spin mb-3"></div>
+              <p class="text-xs font-semibold text-[#4B5157]">Chargement des évaluations en ligne...</p>
+            </div>
+          } @else if (filteredQuiz.length === 0) {
+            <div class="p-12 text-center bg-white border border-[#D7DBDE] rounded-xs space-y-3">
+              <svg class="w-12 h-12 text-[#9AA1A8] mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h3 class="text-sm font-bold text-[#1B1D1F]">Aucun quiz correspondant</h3>
+              <p class="text-xs text-[#4B5157] max-w-sm mx-auto">
+                Aucun quiz d'évaluation ne correspond à vos filtres actuels.
+              </p>
+              @if (quizFilterStatus !== 'TOUS' || quizSearchQuery.trim()) {
+                <button
+                  type="button"
+                  (click)="quizFilterStatus = 'TOUS'; quizSearchQuery = ''"
+                  class="px-4 py-2 bg-[#1C75BC] text-white text-xs font-bold rounded-xs cursor-pointer"
+                >
+                  Réinitialiser les filtres
+                </button>
+              }
+            </div>
+          } @else {
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              @for (quiz of filteredQuiz; track quiz.id) {
+                <div class="p-5 bg-white border border-[#D7DBDE] hover:border-[#1C75BC] rounded-xs shadow-2xs transition-all flex flex-col justify-between space-y-4">
+                  <div class="space-y-2">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                      <span class="px-2 py-0.5 rounded-xs bg-[#E7F1FA] text-[#1C75BC] border border-[#1C75BC] text-[10px] font-bold uppercase tracking-wider">
+                        {{ quiz.formationTitre }}
+                      </span>
+                      @if (quiz.tentative) {
+                        <span class="px-2 py-0.5 rounded-xs text-[10px] font-bold font-mono border" [class]="quiz.tentative.score >= 50 ? 'bg-[#E7F1EA] text-[#276B44] border-[#276B44]' : 'bg-[#FDECEA] text-[#ED1C24] border-[#ED1C24]'">
+                          {{ quiz.tentative.score }}% ({{ quiz.tentative.score >= 50 ? 'Validé' : 'Non validé' }})
+                        </span>
+                      } @else {
+                        <span class="px-2 py-0.5 rounded-xs bg-[#FDECDD] text-[#F0791E] border border-[#F0791E] text-[10px] font-bold uppercase tracking-wider">
+                          À passer
+                        </span>
+                      }
+                    </div>
+
+                    <h3 class="text-sm font-bold text-[#1B1D1F] leading-snug">{{ quiz.titre }}</h3>
+                    <p class="text-xs text-[#4B5157]">Module : <strong>{{ quiz.moduleTitre }}</strong></p>
+
+                    <div class="flex items-center gap-4 text-[11px] text-[#71787E] pt-1">
+                      <span class="flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 text-[#1C75BC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>{{ quiz.dureeMinutes ? quiz.dureeMinutes + ' min chrono' : 'Temps libre' }}</span>
+                      </span>
+                      <span class="flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 text-[#276B44]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                        <span>{{ quiz.nbQuestions }} questions</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="pt-3 border-t border-[#D7DBDE] flex items-center justify-between gap-3">
+                    @if (quiz.tentative) {
+                      <span class="text-[11px] text-[#71787E] font-mono">
+                        Passé le {{ quiz.tentative.datePassage | date:'dd/MM/yyyy' }}
+                      </span>
+                      <a
+                        [routerLink]="['/apprenant/evaluations/quiz-player', quiz.id]"
+                        class="px-3.5 py-1.5 rounded-xs bg-[#E7F1FA] hover:bg-[#1C75BC] text-[#1C75BC] hover:text-white border border-[#1C75BC] text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Voir mon score</span>
+                        <span>→</span>
+                      </a>
+                    } @else {
+                      <span class="text-[11px] text-[#F0791E] font-semibold">
+                        1 seule tentative autorisée
+                      </span>
+                      <a
+                        [routerLink]="['/apprenant/evaluations/quiz-player', quiz.id]"
+                        class="px-4 py-2 rounded-xs bg-[#F0791E] hover:bg-[#d96612] text-white text-xs font-bold shadow-xs transition-all inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Commencer le test</span>
+                        <span>→</span>
+                      </a>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
   `,
 })
 export class DepotDevoirComponent implements OnInit, OnDestroy {
+  // Onglets
+  activeTab: EvaluationTab = 'DEVOIRS';
+
+  // Devoirs State
   devoirs: DevoirItem[] = [];
   selectedDevoir: DevoirItem | null = null;
   loading = true;
 
-  // Filtres & Recherche
+  // Filtres & Recherche Devoirs
   filterStatus: DevoirFilterStatus = 'TOUS';
   searchQuery = '';
 
@@ -556,6 +792,12 @@ export class DepotDevoirComponent implements OnInit, OnDestroy {
   selectedFile: File | null = null;
   isDragging = false;
   uploading = false;
+
+  // Quiz State
+  quizList: ApprenantQuizItem[] = [];
+  loadingQuiz = true;
+  quizFilterStatus: 'TOUS' | 'A_PASSER' | 'VALIDES' = 'TOUS';
+  quizSearchQuery = '';
 
   private liveSub?: Subscription;
 
@@ -568,8 +810,12 @@ export class DepotDevoirComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     const targetDevoirId = this.route.snapshot.queryParamMap.get('devoirId');
+    const tabParam = this.route.snapshot.queryParamMap.get('tab');
+    if (tabParam && tabParam.toLowerCase() === 'quiz') {
+      this.activeTab = 'QUIZ';
+    }
 
-    // 1. Rendu instantané depuis le snapshot localStorage (0ms !)
+    // 1. Rendu instantané devoirs depuis snapshot
     const cached = this.apprenantService.getDevoirsSnapshot();
     if (cached && cached.length >= 0) {
       this.devoirs = cached as DevoirItem[];
@@ -577,14 +823,76 @@ export class DepotDevoirComponent implements OnInit, OnDestroy {
       this.selectInitial(targetDevoirId);
     }
 
-    // 2. Revalidation silencieuse en tâche de fond
+    // 2. Revalidation devoirs en tâche de fond
     this.loadAllDevoirs(cached === null, targetDevoirId);
 
-    // 3. Rafraîchissement automatique SSE — quand un devoir est noté
+    // 3. Chargement des quiz
+    this.loadAllQuiz();
+
+    // 4. Rafraîchissement automatique SSE — quand un devoir est noté
     this.liveSub = this.apprenantService.liveUpdates$.subscribe((event) => {
       if (event.type === 'DEVOIR_NOTE') {
         this.loadAllDevoirs(false, null);
       }
+    });
+  }
+
+  switchTab(tab: EvaluationTab) {
+    this.activeTab = tab;
+    if (tab === 'QUIZ' && this.quizList.length === 0) {
+      this.loadAllQuiz();
+    }
+  }
+
+  loadAllQuiz() {
+    this.loadingQuiz = true;
+    this.apprenantService.getAllQuiz().subscribe({
+      next: (list) => {
+        this.quizList = list;
+        this.loadingQuiz = false;
+      },
+      error: () => {
+        this.loadingQuiz = false;
+      },
+    });
+  }
+
+  setQuizFilter(status: 'TOUS' | 'A_PASSER' | 'VALIDES') {
+    this.quizFilterStatus = status;
+  }
+
+  get kpiQuizTotal(): number {
+    return this.quizList.length;
+  }
+
+  get kpiQuizAPasser(): number {
+    return this.quizList.filter((q) => !q.tentative).length;
+  }
+
+  get kpiQuizValides(): number {
+    return this.quizList.filter((q) => q.tentative && q.tentative.score >= 50).length;
+  }
+
+  get moyenneQuiz(): number | null {
+    const passed = this.quizList.filter((q) => q.tentative);
+    if (passed.length === 0) return null;
+    const sum = passed.reduce((acc, q) => acc + q.tentative!.score, 0);
+    return Math.round((sum / passed.length) * 10) / 10;
+  }
+
+  get filteredQuiz(): ApprenantQuizItem[] {
+    return this.quizList.filter((q) => {
+      if (this.quizFilterStatus === 'A_PASSER' && q.tentative) return false;
+      if (this.quizFilterStatus === 'VALIDES' && (!q.tentative || q.tentative.score < 50)) return false;
+
+      if (this.quizSearchQuery.trim()) {
+        const query = this.quizSearchQuery.toLowerCase().trim();
+        const matchTitle = q.titre.toLowerCase().includes(query);
+        const matchModule = q.moduleTitre.toLowerCase().includes(query);
+        const matchFormation = q.formationTitre.toLowerCase().includes(query);
+        if (!matchTitle && !matchModule && !matchFormation) return false;
+      }
+      return true;
     });
   }
 
