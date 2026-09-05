@@ -205,6 +205,8 @@ export class ApprenantService {
     MODULES_PREFIX: 'vc_apprenant_modules_',
     CERTIFICATS: 'vc_apprenant_certificats',
     DEVOIRS: 'vc_apprenant_devoirs',
+    QUIZ_LIST: 'vc_apprenant_quiz_list',
+    QUIZ_PREFIX: 'vc_apprenant_quiz_detail_',
   };
 
   constructor(private http: HttpClient) {}
@@ -321,6 +323,20 @@ export class ApprenantService {
   }
 
   /**
+   * Retourne immédiatement l'instantané d'un Quiz en cache local (0ms - transition instantanée)
+   */
+  getQuizSnapshot(quizId: string): QuizDetail | null {
+    return this.getLocal<QuizDetail>(this.CACHE_KEYS.QUIZ_PREFIX + quizId);
+  }
+
+  /**
+   * Retourne immédiatement l'instantané de la liste des Quiz en cache local (0ms)
+   */
+  getAllQuizSnapshot(): ApprenantQuizItem[] | null {
+    return this.getLocal<ApprenantQuizItem[]>(this.CACHE_KEYS.QUIZ_LIST);
+  }
+
+  /**
    * Invalide le cache local pour forcer un rafraîchissement immédiat
    */
   invalidateCache() {
@@ -329,10 +345,11 @@ export class ApprenantService {
       localStorage.removeItem(this.CACHE_KEYS.FORMATIONS);
       localStorage.removeItem(this.CACHE_KEYS.CERTIFICATS);
       localStorage.removeItem(this.CACHE_KEYS.DEVOIRS);
+      localStorage.removeItem(this.CACHE_KEYS.QUIZ_LIST);
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith(this.CACHE_KEYS.MODULES_PREFIX)) {
+        if (key && (key.startsWith(this.CACHE_KEYS.MODULES_PREFIX) || key.startsWith(this.CACHE_KEYS.QUIZ_PREFIX))) {
           keysToRemove.push(key);
         }
       }
@@ -391,11 +408,18 @@ export class ApprenantService {
   }
 
   getQuiz(quizId: string): Observable<QuizDetail> {
-    return this.http.get<QuizDetail>(`${this.apiUrl}/quiz/${quizId}`);
+    return this.http.get<QuizDetail>(`${this.apiUrl}/quiz/${quizId}`).pipe(
+      tap((data) => this.setLocal(this.CACHE_KEYS.QUIZ_PREFIX + quizId, data)),
+      shareReplay(1),
+    );
   }
 
   submitQuiz(quizId: string, reponses: { questionId: string; selectedIndex: number }[]): Observable<QuizSubmissionResult> {
     this.invalidateCache();
+    try {
+      localStorage.removeItem(this.CACHE_KEYS.QUIZ_PREFIX + quizId);
+      localStorage.removeItem(this.CACHE_KEYS.QUIZ_LIST);
+    } catch {}
     return this.http.post<QuizSubmissionResult>(`${this.apiUrl}/quiz/${quizId}/soumettre`, { reponses });
   }
 
@@ -421,7 +445,7 @@ export class ApprenantService {
    */
   getAllQuiz(): Observable<ApprenantQuizItem[]> {
     return this.http.get<ApprenantQuizItem[]>(`${this.apiUrl}/quiz`).pipe(
-      tap((data) => this.setLocal('vc_quiz_list', data)),
+      tap((data) => this.setLocal(this.CACHE_KEYS.QUIZ_LIST, data)),
       shareReplay(1),
     );
   }

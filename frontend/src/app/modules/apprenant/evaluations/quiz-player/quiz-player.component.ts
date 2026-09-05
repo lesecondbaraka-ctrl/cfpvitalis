@@ -17,13 +17,14 @@ import { ToastService } from '../../../../core/services/toast.service';
       <!-- TOP NAVIGATION -->
       <div class="flex items-center justify-between">
         <a
-          routerLink="/apprenant/formations"
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xs bg-white border border-[#D7DBDE] text-xs font-semibold text-[#1C75BC] hover:bg-[#E7F1FA] transition-all shadow-2xs"
+          routerLink="/apprenant/evaluations/depot-devoir"
+          [queryParams]="{ tab: 'quiz' }"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xs bg-white border border-[#D7DBDE] text-xs font-semibold text-[#1C75BC] hover:bg-[#E7F1FA] transition-all shadow-2xs cursor-pointer"
         >
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          <span>Retour au parcours</span>
+          <span>Retour aux évaluations</span>
         </a>
 
         @if (quiz && !quiz.tentative && !result && timeLeftSeconds > 0) {
@@ -36,15 +37,64 @@ import { ToastService } from '../../../../core/services/toast.service';
         }
       </div>
 
-      @if (loading) {
-        <div class="p-16 text-center text-[#4B5157] bg-white border border-[#D7DBDE] rounded-xs">
-          <div class="inline-block w-8 h-8 border-3 border-[#1C75BC] border-t-transparent rounded-full animate-spin mb-3"></div>
-          <p class="text-xs font-semibold text-[#4B5157]">Chargement du quiz d'évaluation...</p>
+      <!-- ÉTAT 1 : CHARGEMENT INITIAL (AVEC INDICATEUR PROGRESSIF) -->
+      @if (loading && !quiz) {
+        <div class="p-12 md:p-16 text-center text-[#4B5157] bg-white border border-[#D7DBDE] rounded-xs shadow-xs space-y-4">
+          <div class="inline-block w-10 h-10 border-3 border-[#1C75BC] border-t-[#F0791E] rounded-full animate-spin"></div>
+          <div class="space-y-1">
+            <h3 class="text-sm font-bold text-[#1B1D1F]">Chargement de votre évaluation</h3>
+            <p class="text-xs text-[#71787E]">Préparation du sujet sécurisé et synchronisation du chronomètre...</p>
+          </div>
+          @if (isSlowLoading) {
+            <div class="p-3.5 bg-[#E7F1FA] border border-[#1C75BC] rounded-xs text-xs text-[#1C75BC] max-w-md mx-auto space-y-1 animate-fade-in">
+              <p class="font-bold flex items-center justify-center gap-1.5">
+                <svg class="w-4 h-4 animate-pulse text-[#F0791E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Connexion sécurisée en cours d'établissement
+              </p>
+              <p class="text-[11px] text-[#4B5157]">
+                Le serveur académique initialise votre session. L'évaluation va s'afficher instantanément.
+              </p>
+            </div>
+          }
+        </div>
+      } @else if (errorMessage && !quiz) {
+        <!-- ÉTAT 2 : ERREUR RÉSILIENTE AVEC BOUTON DE RÉESSAI (AUCUN ÉCRAN VIDE) -->
+        <div class="p-8 md:p-12 text-center bg-white border border-[#ED1C24]/30 rounded-xs shadow-xs space-y-5 animate-fade-in">
+          <div class="w-14 h-14 rounded-xs bg-[#FDECEA] text-[#ED1C24] flex items-center justify-center mx-auto border-b-2 border-[#ED1C24]">
+            <svg class="w-7 h-7 text-[#ED1C24]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div class="space-y-1 max-w-md mx-auto">
+            <h3 class="text-base font-bold text-[#1B1D1F]">Impossible de charger l'évaluation</h3>
+            <p class="text-xs text-[#4B5157]">{{ errorMessage }}</p>
+          </div>
+          <div class="flex items-center justify-center gap-3 pt-2">
+            <button
+              type="button"
+              (click)="loadQuiz(false)"
+              class="px-5 py-2.5 rounded-xs bg-[#1C75BC] hover:bg-[#124F80] text-white text-xs font-bold shadow-xs transition-all cursor-pointer inline-flex items-center gap-2"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Réessayer maintenant</span>
+            </button>
+            <a
+              routerLink="/apprenant/evaluations/depot-devoir"
+              [queryParams]="{ tab: 'quiz' }"
+              class="px-4 py-2.5 rounded-xs border border-[#D7DBDE] text-[#4B5157] hover:bg-[#F5F6F7] text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+            >
+              Retour aux évaluations
+            </a>
+          </div>
         </div>
       } @else if (quiz) {
         <!-- QUIZ ALREADY COMPLETED SCREEN -->
         @if (quiz.tentative && !result) {
-          <div class="p-8 md:p-12 bg-white border border-[#D7DBDE] rounded-xs text-center space-y-6 shadow-xs">
+          <div class="p-8 md:p-12 bg-white border border-[#D7DBDE] rounded-xs text-center space-y-6 shadow-xs animate-fade-in">
             <div class="w-14 h-14 rounded-xs bg-[#E7F1FA] text-[#1C75BC] flex items-center justify-center mx-auto border-b-2 border-[#F0791E]">
               <svg class="w-7 h-7 text-[#1C75BC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
@@ -69,10 +119,11 @@ import { ToastService } from '../../../../core/services/toast.service';
 
             <div>
               <a
-                routerLink="/apprenant/formations"
-                class="px-5 py-2.5 rounded-xs bg-[#1C75BC] text-white text-xs font-bold hover:bg-[#124F80] shadow-xs transition-all inline-flex items-center gap-1.5"
+                routerLink="/apprenant/evaluations/depot-devoir"
+                [queryParams]="{ tab: 'quiz' }"
+                class="px-5 py-2.5 rounded-xs bg-[#1C75BC] text-white text-xs font-bold hover:bg-[#124F80] shadow-xs transition-all inline-flex items-center gap-1.5 cursor-pointer"
               >
-                <span>Continuer mes formations</span>
+                <span>Retour aux évaluations</span>
                 <span>→</span>
               </a>
             </div>
@@ -144,17 +195,18 @@ import { ToastService } from '../../../../core/services/toast.service';
 
             <div class="text-center pt-4">
               <a
-                routerLink="/apprenant/formations"
-                class="px-6 py-3 rounded-xs bg-[#1C75BC] text-white text-xs font-bold hover:bg-[#124F80] shadow-xs transition-all inline-flex items-center gap-1.5"
+                routerLink="/apprenant/evaluations/depot-devoir"
+                [queryParams]="{ tab: 'quiz' }"
+                class="px-6 py-3 rounded-xs bg-[#1C75BC] text-white text-xs font-bold hover:bg-[#124F80] shadow-xs transition-all inline-flex items-center gap-1.5 cursor-pointer"
               >
-                <span>Retour aux formations</span>
+                <span>Retour aux évaluations</span>
                 <span>→</span>
               </a>
             </div>
           </div>
         } @else {
           <!-- ACTIVE QUIZ PLAYER -->
-          <div class="p-4 sm:p-6 md:p-8 bg-white border border-[#D7DBDE] rounded-xs space-y-6 shadow-xs">
+          <div class="p-4 sm:p-6 md:p-8 bg-white border border-[#D7DBDE] rounded-xs space-y-6 shadow-xs animate-fade-in">
             <!-- Quiz Info Header -->
             <div class="border-b border-[#D7DBDE] pb-5">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
@@ -173,6 +225,7 @@ import { ToastService } from '../../../../core/services/toast.service';
               <div class="flex items-center gap-1.5 flex-wrap mt-4">
                 @for (q of quiz.questions; track q.id; let idx = $index) {
                   <button
+                    type="button"
                     (click)="goToQuestion(idx)"
                     class="w-7 h-7 sm:w-8 sm:h-8 rounded-xs text-xs font-bold transition-all border cursor-pointer font-mono"
                     [class]="idx === currentQuestionIndex ? 'bg-[#1C75BC] text-white border-[#1C75BC]' : isAnswered(q.id) ? 'bg-[#E7F1EA] text-[#276B44] border-[#276B44]' : 'bg-[#F5F6F7] text-[#4B5157] border-[#D7DBDE] hover:bg-[#E7F1FA]'"
@@ -216,6 +269,7 @@ import { ToastService } from '../../../../core/services/toast.service';
             <!-- Bottom Navigation Actions -->
             <div class="p-3 sm:p-4 bg-[#F5F6F7] border border-[#D7DBDE] rounded-xs flex items-center justify-between gap-3">
               <button
+                type="button"
                 (click)="prevQuestion()"
                 [disabled]="currentQuestionIndex === 0"
                 class="px-3 sm:px-4 py-2 rounded-xs bg-white border border-[#D7DBDE] text-xs font-semibold text-[#1B1D1F] hover:bg-[#E7F1FA] disabled:opacity-40 disabled:cursor-not-allowed shadow-xs cursor-pointer"
@@ -226,6 +280,7 @@ import { ToastService } from '../../../../core/services/toast.service';
               <div class="flex items-center gap-2 sm:gap-3">
                 @if (currentQuestionIndex < quiz.questions.length - 1) {
                   <button
+                    type="button"
                     (click)="nextQuestion()"
                     class="px-3 sm:px-4 py-2 rounded-xs bg-[#1C75BC] hover:bg-[#124F80] text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
                   >
@@ -233,6 +288,7 @@ import { ToastService } from '../../../../core/services/toast.service';
                   </button>
                 } @else {
                   <button
+                    type="button"
                     (click)="submitQuiz()"
                     [disabled]="submitting"
                     class="px-5 py-2.5 rounded-xs bg-[#276B44] hover:bg-[#1e5234] text-white text-xs font-bold shadow-xs transition-all flex items-center gap-2 cursor-pointer"
@@ -254,14 +310,19 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
   quiz: QuizDetail | null = null;
   result: QuizSubmissionResult | null = null;
   loading = true;
+  isSlowLoading = false;
+  errorMessage: string | null = null;
   submitting = false;
 
   currentQuestionIndex = 0;
   reponsesMap = new Map<string, number>();
 
-  // Timer
+  // Timer & Async helpers
   timerInterval: any = null;
+  slowTimer: any = null;
   timeLeftSeconds = 0;
+
+  private readonly DRAFT_PREFIX = 'vc_quiz_draft_';
 
   constructor(
     private route: ActivatedRoute,
@@ -273,7 +334,23 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.quizId = this.route.snapshot.paramMap.get('id') || '';
     if (this.quizId) {
-      this.loadQuiz();
+      // 1. Essayer d'abord d'afficher l'instantané local (0 milliseconde)
+      const snapshot = this.apprenantService.getQuizSnapshot(this.quizId);
+      if (snapshot) {
+        this.quiz = snapshot;
+        this.loading = false;
+        if (!snapshot.tentative) {
+          this.restoreDraft();
+          if (snapshot.dureeMinutes && !this.timerInterval) {
+            this.timeLeftSeconds = snapshot.dureeMinutes * 60;
+            this.startTimer();
+          }
+        }
+        // Rafraîchissement silencieux en arrière-plan
+        this.loadQuiz(true);
+      } else {
+        this.loadQuiz(false);
+      }
     }
   }
 
@@ -281,28 +358,61 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
     }
+    if (this.slowTimer) {
+      clearTimeout(this.slowTimer);
+    }
   }
 
-  loadQuiz() {
-    this.loading = true;
+  loadQuiz(silent = false) {
+    if (!silent) {
+      this.loading = true;
+      this.errorMessage = null;
+      this.isSlowLoading = false;
+
+      if (this.slowTimer) clearTimeout(this.slowTimer);
+      this.slowTimer = setTimeout(() => {
+        if (this.loading && !this.quiz) {
+          this.isSlowLoading = true;
+        }
+      }, 3500);
+    }
+
     this.apprenantService.getQuiz(this.quizId).subscribe({
       next: (data) => {
+        if (this.slowTimer) clearTimeout(this.slowTimer);
         this.quiz = data;
         this.loading = false;
+        this.isSlowLoading = false;
+        this.errorMessage = null;
 
-        if (!data.tentative && data.dureeMinutes) {
-          this.timeLeftSeconds = data.dureeMinutes * 60;
-          this.startTimer();
+        if (!data.tentative) {
+          this.restoreDraft();
+          if (data.dureeMinutes && !this.timerInterval) {
+            this.timeLeftSeconds = data.dureeMinutes * 60;
+            this.startTimer();
+          }
         }
       },
-      error: () => {
+      error: (err) => {
+        if (this.slowTimer) clearTimeout(this.slowTimer);
         this.loading = false;
-        this.toast.error('Erreur lors du chargement du quiz.');
+        this.isSlowLoading = false;
+
+        // Si aucun instantané n'est affiché, afficher la vue d'erreur résiliente
+        if (!this.quiz) {
+          this.errorMessage =
+            err.error?.message ||
+            'Le serveur académique met du temps à répondre ou votre session a expiré. Veuillez vérifier votre connexion et réessayer.';
+          this.toast.error('Impossible de charger le quiz.');
+        }
       },
     });
   }
 
   startTimer() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
     this.timerInterval = setInterval(() => {
       if (this.timeLeftSeconds > 0) {
         this.timeLeftSeconds--;
@@ -342,6 +452,7 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
 
   selectOption(questionId: string, optionIndex: number) {
     this.reponsesMap.set(questionId, optionIndex);
+    this.saveDraft();
   }
 
   getSelectedOption(questionId: string): number | undefined {
@@ -350,6 +461,31 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
 
   isAnswered(questionId: string): boolean {
     return this.reponsesMap.has(questionId);
+  }
+
+  private saveDraft() {
+    try {
+      const entries = Array.from(this.reponsesMap.entries());
+      sessionStorage.setItem(this.DRAFT_PREFIX + this.quizId, JSON.stringify(entries));
+    } catch {}
+  }
+
+  private restoreDraft() {
+    try {
+      const raw = sessionStorage.getItem(this.DRAFT_PREFIX + this.quizId);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          this.reponsesMap = new Map<string, number>(parsed);
+        }
+      }
+    } catch {}
+  }
+
+  private clearDraft() {
+    try {
+      sessionStorage.removeItem(this.DRAFT_PREFIX + this.quizId);
+    } catch {}
   }
 
   submitQuiz() {
@@ -376,6 +512,7 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
       next: (res) => {
         this.submitting = false;
         this.result = res;
+        this.clearDraft();
         this.toast.success(`Quiz terminé ! Score : ${res.score}%`);
       },
       error: (err) => {

@@ -748,6 +748,7 @@ type EvaluationTab = 'DEVOIRS' | 'QUIZ';
                       </span>
                       <a
                         [routerLink]="['/apprenant/evaluations/quiz-player', quiz.id]"
+                        (mouseenter)="prefetchQuiz(quiz.id)"
                         class="px-3.5 py-1.5 rounded-xs bg-[#E7F1FA] hover:bg-[#1C75BC] text-[#1C75BC] hover:text-white border border-[#1C75BC] text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer"
                       >
                         <span>Voir mon score</span>
@@ -759,6 +760,7 @@ type EvaluationTab = 'DEVOIRS' | 'QUIZ';
                       </span>
                       <a
                         [routerLink]="['/apprenant/evaluations/quiz-player', quiz.id]"
+                        (mouseenter)="prefetchQuiz(quiz.id)"
                         class="px-4 py-2 rounded-xs bg-[#F0791E] hover:bg-[#d96612] text-white text-xs font-bold shadow-xs transition-all inline-flex items-center gap-1 cursor-pointer"
                       >
                         <span>Commencer le test</span>
@@ -845,7 +847,14 @@ export class DepotDevoirComponent implements OnInit, OnDestroy {
   }
 
   loadAllQuiz() {
-    this.loadingQuiz = true;
+    const snapshot = this.apprenantService.getAllQuizSnapshot();
+    if (snapshot) {
+      this.quizList = snapshot;
+      this.loadingQuiz = false;
+    } else {
+      this.loadingQuiz = true;
+    }
+
     this.apprenantService.getAllQuiz().subscribe({
       next: (list) => {
         this.quizList = list;
@@ -855,6 +864,12 @@ export class DepotDevoirComponent implements OnInit, OnDestroy {
         this.loadingQuiz = false;
       },
     });
+  }
+
+  prefetchQuiz(quizId: string) {
+    if (!this.apprenantService.getQuizSnapshot(quizId)) {
+      this.apprenantService.getQuiz(quizId).subscribe({ error: () => {} });
+    }
   }
 
   setQuizFilter(status: 'TOUS' | 'A_PASSER' | 'VALIDES') {

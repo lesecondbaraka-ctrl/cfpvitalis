@@ -81,16 +81,12 @@ export class ApprenantService {
     return { etablissementId: user.etablissementId };
   }
 
-  private async assertFormationAccess(formationId: string, user: any) {
-    // 1. Si l'apprenant détient un certificat officiel pour cette formation, l'accès est garanti
-    const cert = await this.prisma.certificat.findFirst({
-      where: { formationId, utilisateurId: user.id },
-      select: { id: true },
-    });
-    if (cert) return;
+  private async assertFormationAccess(formationId: string, user: any, preloadedFormation?: any) {
+    const accessKey = `access:${formationId}:${user.id}`;
+    if (this.getFromCache(accessKey)) return;
 
-    // 2. Vérifier que la formation existe
-    const formation = await this.prisma.formation.findUnique({
+    // 1. Isolation multi-tenant stricte : l'apprenant ne peut pas accéder aux formations d'un autre établissement
+    const formation = preloadedFormation || await this.prisma.formation.findUnique({
       where: { id: formationId },
       select: { id: true, etablissementId: true },
     });
@@ -98,9 +94,32 @@ export class ApprenantService {
       throw new NotFoundException('Formation introuvable.');
     }
 
-    // 3. Isolation multi-tenant stricte : l'apprenant ne peut pas accéder aux formations d'un autre établissement
     if (user.etablissementId && formation.etablissementId && formation.etablissementId !== user.etablissementId) {
       throw new ForbiddenException('BR-02 : Accès interdit à une formation hors de votre établissement.');
+    }
+
+    // 2. Chemin rapide : inscription active déjà existante (1 seule requête SQL ultra-rapide)
+    const existingInscription = await this.prisma.inscription.findFirst({
+      where: {
+        formationId,
+        apprenant: { utilisateurId: user.id },
+        statut: { in: ['ACTIVE', 'RESERVEE', 'TERMINEE'] },
+      },
+      select: { id: true },
+    });
+    if (existingInscription) {
+      this.setCache(accessKey, true, 300_000);
+      return;
+    }
+
+    // 3. Chemin rapide : certificat officiel déjà obtenu
+    const cert = await this.prisma.certificat.findFirst({
+      where: { formationId, utilisateurId: user.id },
+      select: { id: true },
+    });
+    if (cert) {
+      this.setCache(accessKey, true, 300_000);
+      return;
     }
 
     // 4. Inscription automatique au premier accès à la formation de son établissement si non encore inscrit
@@ -124,22 +143,18 @@ export class ApprenantService {
     }
 
     if (profile) {
-      const existingInscription = await this.prisma.inscription.findFirst({
-        where: { apprenantId: profile.id, formationId, statut: { in: ['ACTIVE', 'RESERVEE', 'TERMINEE'] } },
-      });
-      if (!existingInscription) {
-        try {
-          await this.prisma.inscription.create({
-            data: {
-              apprenantId: profile.id,
-              formationId,
-              statut: 'ACTIVE',
-            },
-          });
-          this.invalidateUserCache(user.id);
-        } catch (err) {
-          // Déjà existante ou contrainte concurrente
-        }
+      try {
+        await this.prisma.inscription.create({
+          data: {
+            apprenantId: profile.id,
+            formationId,
+            statut: 'ACTIVE',
+          },
+        });
+        this.invalidateUserCache(user.id);
+        this.setCache(accessKey, true, 300_000);
+      } catch (err) {
+        this.setCache(accessKey, true, 300_000);
       }
     }
   }
@@ -728,6 +743,9 @@ export class ApprenantService {
    */
   async getQuiz(quizId: string, user: any) {
     this.assertApprenant(user);
+    const cacheKey = `quiz:${quizId}:${user.id}`;
+    const cached = this.getFromCache<any>(cacheKey);
+    if (cached) return cached;
 
     const quiz = await this.prisma.quiz.findUnique({
       where: { id: quizId },
@@ -742,7 +760,7 @@ export class ApprenantService {
     });
 
     if (!quiz) throw new NotFoundException('Quiz introuvable.');
-    await this.assertFormationAccess(quiz.module.formation.id, user);
+    await this.assertFormationAccess(quiz.module.formation.id, user, quiz.module.formation);
 
     const tentative = quiz.tentatives[0] || null;
 
@@ -759,7 +777,7 @@ export class ApprenantService {
       };
     });
 
-    return {
+    const result = {
       id: quiz.id,
       titre: quiz.titre,
       dureeMinutes: quiz.dureeMinutes,
@@ -776,6 +794,8 @@ export class ApprenantService {
           }
         : null,
     };
+
+    return this.setCache(cacheKey, result, 60_000);
   }
 
   /**
@@ -797,7 +817,7 @@ export class ApprenantService {
     });
 
     if (!quiz) throw new NotFoundException('Quiz introuvable.');
-    await this.assertFormationAccess(quiz.module.formation.id, user);
+    await this.assertFormationAccess(quiz.module.formation.id, user, quiz.module.formation);
 
     const existing = await this.prisma.tentativeQuiz.findUnique({
       where: { quizId_apprenantId: { quizId, apprenantId: user.id } },
