@@ -52,7 +52,7 @@ export class ApprenantService {
     }
   }
 
-  private async formationFilterForUser(user: any): Promise<{ id?: { in: string[] }; etablissementId?: string }> {
+  private async formationFilterForUser(user: any): Promise<any> {
     const profile = await this.prisma.apprenant.findUnique({ where: { utilisateurId: user.id } });
     if (!profile) {
       return { etablissementId: user.etablissementId };
@@ -69,10 +69,16 @@ export class ApprenantService {
       ...inscriptions.map((i) => i.formationId),
       ...certifs.map((c) => c.formationId),
     ]));
-    if (!ids.length) {
-      return { id: { in: ['00000000-0000-0000-0000-000000000000'] } };
+
+    if (ids.length > 0) {
+      return {
+        OR: [
+          { id: { in: ids } },
+          { etablissementId: user.etablissementId },
+        ],
+      };
     }
-    return { id: { in: ids } };
+    return { etablissementId: user.etablissementId };
   }
 
   private async assertFormationAccess(formationId: string, user: any) {
@@ -83,16 +89,58 @@ export class ApprenantService {
     });
     if (cert) return;
 
-    const filter = await this.formationFilterForUser(user);
-    if (filter.etablissementId) {
-      const formation = await this.prisma.formation.findUnique({ where: { id: formationId } });
-      if (!formation || formation.etablissementId !== user.etablissementId) {
-        throw new ForbiddenException('BR-02 : Accès interdit à cette formation.');
-      }
-      return;
+    // 2. Vérifier que la formation existe
+    const formation = await this.prisma.formation.findUnique({
+      where: { id: formationId },
+      select: { id: true, etablissementId: true },
+    });
+    if (!formation) {
+      throw new NotFoundException('Formation introuvable.');
     }
-    if (!filter.id?.in.includes(formationId)) {
-      throw new ForbiddenException('BR-10 : Accès réservé aux formations auxquelles vous êtes inscrit.');
+
+    // 3. Isolation multi-tenant stricte : l'apprenant ne peut pas accéder aux formations d'un autre établissement
+    if (user.etablissementId && formation.etablissementId && formation.etablissementId !== user.etablissementId) {
+      throw new ForbiddenException('BR-02 : Accès interdit à une formation hors de votre établissement.');
+    }
+
+    // 4. Inscription automatique au premier accès à la formation de son établissement si non encore inscrit
+    let profile = await this.prisma.apprenant.findUnique({ where: { utilisateurId: user.id } });
+    if (!profile) {
+      try {
+        const count = await this.prisma.apprenant.count();
+        const matricule = `VIT-${new Date().getFullYear()}-${String(count + 1).padStart(6, '0')}`;
+        profile = await this.prisma.apprenant.create({
+          data: {
+            utilisateurId: user.id,
+            matricule,
+            nom: user.nom || 'Apprenant',
+            prenom: user.prenom || '',
+            email: user.email,
+          },
+        });
+      } catch (err) {
+        profile = await this.prisma.apprenant.findUnique({ where: { utilisateurId: user.id } });
+      }
+    }
+
+    if (profile) {
+      const existingInscription = await this.prisma.inscription.findFirst({
+        where: { apprenantId: profile.id, formationId, statut: { in: ['ACTIVE', 'RESERVEE', 'TERMINEE'] } },
+      });
+      if (!existingInscription) {
+        try {
+          await this.prisma.inscription.create({
+            data: {
+              apprenantId: profile.id,
+              formationId,
+              statut: 'ACTIVE',
+            },
+          });
+          this.invalidateUserCache(user.id);
+        } catch (err) {
+          // Déjà existante ou contrainte concurrente
+        }
+      }
     }
   }
 
