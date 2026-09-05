@@ -517,7 +517,10 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.submitting = false;
-        this.toast.error(err.error?.message || 'Erreur lors de la soumission du quiz.');
+        const msg = Array.isArray(err.error?.message)
+          ? err.error.message.join(', ')
+          : (err.error?.message || 'Erreur lors de la soumission du quiz.');
+        this.toast.error(msg);
       },
     });
   }
