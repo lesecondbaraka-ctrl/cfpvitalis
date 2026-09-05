@@ -2,7 +2,16 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Vitalis Center EUP</title>
+  <style>
+    .spa-loading {
+      font-family: sans-serif;
+      text-align: center;
+      margin-top: 20vh;
+      color: #124F80;
+    }
+  </style>
   <script>
     // Stocke l'URL complète demandée puis redirige vers la racine SPA pour résolution Angular
     var path = window.location.pathname;
@@ -13,7 +22,7 @@
   </script>
 </head>
 <body>
-  <p style="font-family: sans-serif; text-align: center; margin-top: 20vh; color: #124F80;">
+  <p class="spa-loading">
     Chargement de Vitalis Center...
   </p>
 </body>
